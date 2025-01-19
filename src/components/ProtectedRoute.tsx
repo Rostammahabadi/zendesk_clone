@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import * as Sentry from "@sentry/react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -11,6 +12,11 @@ export const ProtectedRoute = ({ children, isAuthenticated }: ProtectedRouteProp
   }
 
   if (!isAuthenticated) {
+    Sentry.addBreadcrumb({
+      category: 'auth',
+      message: 'Unauthorized access attempt to protected route',
+      level: 'warning'
+    });
     return <Navigate to="/login" replace />
   }
 

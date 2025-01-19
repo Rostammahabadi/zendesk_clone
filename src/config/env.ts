@@ -3,6 +3,7 @@ interface EnvConfig {
   supabaseAnonKey: string
   googleClientId: string
   environment: 'development' | 'production' | 'test'
+  sentryDsn: string
 }
 
 const getEnvironmentVariable = (key: string): string => {
@@ -18,4 +19,5 @@ export const env: EnvConfig = {
   supabaseAnonKey: getEnvironmentVariable('VITE_SUPABASE_ANON_KEY'),
   googleClientId: getEnvironmentVariable('VITE_GOOGLE_CLIENT_ID'),
   environment: getEnvironmentVariable('MODE') as EnvConfig['environment'],
+  sentryDsn: getEnvironmentVariable('VITE_SENTRY_DSN'),
 } 

@@ -1,50 +1,81 @@
-# React + TypeScript + Vite
+# Countries List with Authentication
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern web application built with React, TypeScript, and Supabase that displays a list of countries with secure authentication.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🔐 Secure authentication with Supabase
+- 📧 Email/Password sign in/up
+- 🔑 Google OAuth integration
+- 🌍 Countries list display
+- 🎨 Modern UI with Tailwind CSS
+- ⚡ Built with Vite + React + TypeScript
 
-## Expanding the ESLint configuration
+## Quick Start
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+1. Install dependencies:
+```bash
+npm install
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+2. Set up environment variables:
+```bash
+# .env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_SENTRY_DSN=your_sentry_dsn
 ```
+
+3. Start development server:
+```bash
+npm run dev
+```
+
+## Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview production build
+
+## Tech Stack
+
+- React 18
+- TypeScript
+- Vite
+- Supabase
+- Tailwind CSS
+- React Router DOM
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── LoginPage.tsx     # Authentication UI
+│   ├── CountriesList.tsx # Main countries display
+│   ├── AuthCallback.tsx  # OAuth handling
+│   └── ProtectedRoute.tsx
+├── lib/
+│   └── supabaseClient.ts # Supabase config
+├── config/
+│   └── env.ts           # Environment config
+└── App.tsx              # Main component
+```
+
+## Deployment
+
+This project is configured for deployment with AWS Amplify. The `amplify.yml` file contains the necessary build settings.
+
+## Development
+
+1. Components use Tailwind CSS for styling
+2. Authentication is handled through Supabase
+3. Protected routes ensure authenticated access
+4. Environment variables manage configuration
+5. TypeScript ensures type safety
+
+## License
+
+MIT
