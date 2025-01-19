@@ -76,6 +76,80 @@ This project is configured for deployment with AWS Amplify. The `amplify.yml` fi
 4. Environment variables manage configuration
 5. TypeScript ensures type safety
 
+## Testing
+
+This project uses a comprehensive testing setup with both unit tests (Vitest) and end-to-end tests (Cypress).
+
+### Unit Tests with Vitest
+
+- Located in `src/**/*.test.tsx` files alongside components
+- Uses React Testing Library for component testing
+- Includes mocked Supabase authentication
+- Coverage reports available
+
+Key test commands:
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+### End-to-End Tests with Cypress
+
+- Located in `cypress/e2e/` directory
+- Tests full user flows including authentication
+- Custom commands for common operations
+
+Key test commands:
+```bash
+# Open Cypress UI
+npm run cypress:open
+
+# Run Cypress tests headlessly
+npm run cypress:run
+```
+
+### Test Structure
+
+```
+src/
+├── components/
+│   ├── LoginPage.test.tsx    # Component tests
+│   └── AuthCallback.test.tsx
+├── test/
+│   ├── setup.ts             # Test configuration
+│   └── helpers/
+│       └── auth.ts         # Auth mocking utilities
+└── App.test.tsx
+
+cypress/
+├── e2e/
+│   └── auth.cy.ts          # E2E test suites
+└── support/
+    ├── commands.ts         # Custom Cypress commands
+    └── e2e.ts             # E2E test configuration
+```
+
+### Key Features
+
+- Mocked Supabase authentication for testing
+- Comprehensive test coverage
+- Integration with Sentry for error tracking
+- Custom test helpers and utilities
+- Automated CI/CD testing pipeline
+
+### Test Coverage
+
+Coverage reports are generated in the `coverage/` directory and include:
+- Unit test coverage
+- Component test coverage
+- Integration test coverage
+
 ## License
 
 MIT

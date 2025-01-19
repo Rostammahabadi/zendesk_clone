@@ -239,6 +239,7 @@ export const LoginPage = () => {
 
           <button
             type="submit"
+            data-testid="submit-button"
             disabled={isLoading || !isFormValid()}
             className="w-full py-3 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >

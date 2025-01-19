@@ -18,6 +18,6 @@ export const env: EnvConfig = {
   supabaseUrl: getEnvironmentVariable('VITE_SUPABASE_URL'),
   supabaseAnonKey: getEnvironmentVariable('VITE_SUPABASE_ANON_KEY'),
   googleClientId: getEnvironmentVariable('VITE_GOOGLE_CLIENT_ID'),
-  environment: getEnvironmentVariable('MODE') as EnvConfig['environment'],
+  environment: (import.meta.env.MODE || 'development') as EnvConfig['environment'],
   sentryDsn: getEnvironmentVariable('VITE_SENTRY_DSN'),
 } 
