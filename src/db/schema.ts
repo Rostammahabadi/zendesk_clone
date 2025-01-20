@@ -10,7 +10,8 @@ import {
   primaryKey,
   varchar,
   pgPolicy,
-  integer
+  integer,
+  index,
 } from "drizzle-orm/pg-core";
 import {
   authenticatedRole,
@@ -53,7 +54,10 @@ export const profiles = pgTable("profiles", {
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`NOW()`).notNull(),
-}, () => [
+}, (table) => [
+  index("idx_profiles_company_id").on(table.companyId),
+  index("idx_profiles_role").on(table.role),
+
   //---------------------------------------------------------------------
   // SELECT
   //   - super_admin sees everyone
@@ -193,6 +197,8 @@ export const companies = pgTable("companies", {
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`NOW()`).notNull(),
 }, (table) => [
+  index("idx_companies_name").on(table.name),
+  index("idx_companies_domain").on(table.domain),
   // SELECT
   pgPolicy("select_companies_policy", {
     as: "permissive",
@@ -287,6 +293,12 @@ export const tickets = pgTable("tickets", {
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`NOW()`).notNull(),
 }, (t) => [
+  index("idx_tickets_company_id").on(t.companyId),
+  index("idx_tickets_created_by").on(t.createdBy),
+  index("idx_tickets_assigned_to").on(t.assignedTo),
+  index("idx_tickets_status").on(t.status),
+  index("idx_tickets_priority").on(t.priority),
+  index("idx_tickets_created_at").on(t.createdAt),
   // SELECT
   pgPolicy("select_tickets_policy", {
     as: "permissive",
@@ -404,6 +416,9 @@ export const ticketComments = pgTable("ticket_comments", {
   isInternal: boolean("is_internal").default(false).notNull(),
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
 }, (tc) => [
+  index("idx_ticket_comments_company_id").on(tc.companyId),
+  index("idx_ticket_comments_ticket_id").on(tc.ticketId),
+  index("idx_ticket_comments_author_id").on(tc.authorId),
   // SELECT
   pgPolicy("select_ticket_comments_policy", {
     as: "permissive",
@@ -499,6 +514,8 @@ export const knowledgeBase = pgTable("knowledge_base", {
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`NOW()`).notNull(),
 }, (kb) => [
+  index("idx_knowledge_base_company_id").on(kb.companyId),
+  index("idx_knowledge_base_is_published").on(kb.isPublished),
   // SELECT
   pgPolicy("select_knowledge_base_policy", {
     as: "permissive",
@@ -576,6 +593,8 @@ export const ticketEvents = pgTable("ticket_events", {
   triggeredBy: uuid("triggered_by").references(() => profiles.id, { onDelete: "set null" }),
   eventTimestamp: timestamp("event_timestamp").default(sql`NOW()`).notNull(),
 }, (te) => [
+  index("idx_ticket_events_company_id").on(te.companyId),
+  index("idx_ticket_events_ticket_id").on(te.ticketId),
   pgPolicy("select_ticket_events_policy", {
     as: "permissive",
     for: "select",
@@ -607,6 +626,8 @@ export const chatMessages = pgTable("chat_messages", {
   message: text("message").notNull(),
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
 }, (cm) => [
+  index("idx_chat_messages_company_id").on(cm.companyId),
+  index("idx_chat_messages_sender_id").on(cm.senderId),
   pgPolicy("select_chat_messages_policy", {
     as: "permissive",
     for: "select",
@@ -645,6 +666,7 @@ export const dailyTicketMetrics = pgTable("daily_ticket_metrics", {
   averageResolutionTime: integer("average_resolution_time"),
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
 }, (dm) => [
+  index("idx_daily_metrics_company_date").on(dm.companyId, dm.date),
   pgPolicy("select_metrics_policy", {
     as: "permissive",
     for: "select",
@@ -684,6 +706,7 @@ export const teams = pgTable("teams", {
   name: varchar("name", { length: 100 }).notNull(),
   createdAt: timestamp("created_at").default(sql`NOW()`).notNull(),
 }, (t) => [
+  index("idx_teams_company_id").on(t.companyId),
   // SELECT
   pgPolicy("select_teams_policy", {
     as: "permissive",
@@ -776,7 +799,10 @@ export const profileTeams = pgTable("profile_teams", {
     .notNull(),
   companyId: uuid("company_id").notNull(),
 }, (pt) => [
-  primaryKey(pt.profileId, pt.teamId),
+  primaryKey({ columns: [pt.profileId, pt.teamId] }),
+
+  // Indexes
+  index("idx_profile_teams_company_id").on(pt.companyId),
 
   // SELECT
   pgPolicy("select_profile_teams_policy", {
