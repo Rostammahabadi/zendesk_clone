@@ -6,6 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
+        - npm run typecheck
         - npm run build
   artifacts:
     baseDirectory: dist
