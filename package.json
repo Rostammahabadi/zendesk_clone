@@ -13,7 +13,13 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "cypress:open": "cypress open",
-    "cypress:run": "cypress run"
+    "cypress:run": "cypress run",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push",
+    "db:drop": "drizzle-kit drop",
+    "db:check": "drizzle-kit check",
+    "db:up": "drizzle-kit up:pg"
   },
   "dependencies": {
     "@sentry/browser": "^8.50.0",
@@ -21,9 +27,18 @@
     "@sentry/tracing": "^7.120.3",
     "@sentry/vite-plugin": "^3.0.0",
     "@supabase/supabase-js": "^2.47.16",
+    "config": "^3.3.12",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.4",
+    "get": "^1.4.0",
+    "lucide-react": "^0.473.0",
+    "npm": "^11.0.0",
+    "postgres": "^3.4.5",
+    "prefix": "^1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.21.3"
+    "react-router-dom": "^6.21.3",
+    "typescript-eslint": "^8.20.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -32,11 +47,11 @@
     "@types/jest": "^29.5.11",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
-    "@types/testing-library__jest-dom": "^5.14.9",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.2.1",
     "autoprefixer": "^10.4.17",
     "cypress": "^13.6.3",
+    "drizzle-kit": "^0.30.2",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
@@ -44,9 +59,10 @@
     "jsdom": "^23.2.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.2",
     "vite": "^5.0.12",
-    "vitest": "^1.2.1"
+    "vitest": "^1.6.0"
   },
   "engines": {
     "node": ">=18.0.0"
