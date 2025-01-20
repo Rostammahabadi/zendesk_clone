@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { getEmailError } from '../utils/emailValidation'
+import { useLocation } from 'react-router-dom'
 
 interface AuthError {
   message: string
@@ -11,6 +13,7 @@ interface ValidationErrors {
 }
 
 export const LoginPage = () => {
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -19,6 +22,15 @@ export const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+
+  // Check for error parameter in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const errorParam = params.get('error')
+    if (errorParam === 'invalid_domain') {
+      setError('Please sign in with your company email address. Personal email addresses are not allowed.')
+    }
+  }, [location])
 
   // Validation functions
   const validateEmail = (email: string): boolean => {
@@ -81,6 +93,14 @@ export const LoginPage = () => {
     setSuccessMessage(null)
     setIsLoading(true)
 
+    // Validate email
+    const emailError = getEmailError(email)
+    if (emailError) {
+      setError(emailError)
+      setIsLoading(false)
+      return
+    }
+
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
@@ -112,14 +132,27 @@ export const LoginPage = () => {
       setError(null)
       setIsLoading(true)
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
           redirectTo: `${window.location.origin}/auth/callback`
         }
       })
 
       if (error) throw error
+
+      // We'll handle domain validation in the callback route since OAuth redirects
+      // Note: The actual validation will need to be implemented in the callback handler
+      // You can add a hidden input or URL parameter to pass the allowed domains
+      const allowedDomains = ['assistly.com'] // Add your company domains here
+      const redirectUrl = new URL(data.url || window.location.origin)
+      redirectUrl.searchParams.append('allowed_domains', allowedDomains.join(','))
+      window.location.href = redirectUrl.toString()
+      
     } catch (error) {
       setError((error as AuthError).message)
       setIsLoading(false)

@@ -1,5 +1,17 @@
-import { Search, Bell, User } from "lucide-react";
+import { Search, Bell, User, LogOut } from "lucide-react";
+import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
+
 export function Header() {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   return (
     <header className="h-16 border-b border-gray-200 flex items-center px-4 justify-between bg-white">
       <div className="w-16 lg:w-0" /> {/* Spacer for mobile menu button */}
@@ -17,10 +29,27 @@ export function Header() {
         <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
           <Bell className="w-5 h-5" />
         </button>
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5 text-white" />
-          </div>
+        <div className="relative">
+          <button 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center"
+          >
+            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+              <button
+                onClick={handleSignOut}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
