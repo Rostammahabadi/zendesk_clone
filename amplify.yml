@@ -23,6 +23,3 @@ frontend:
           value: 'SAMEORIGIN'
         - key: 'X-XSS-Protection'
           value: '1; mode=block'
-  environment:
-    variables:
-      NODE_ENV: production 
