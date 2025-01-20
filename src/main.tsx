@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from "@sentry/react";
 import './index.css'
-import { App } from './App.tsx'
+import { App } from './App'
 import { initSentry } from './config/sentry'
 
 // Initialize Sentry
