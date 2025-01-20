@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Home,
   InboxIcon,
@@ -9,44 +10,61 @@ import {
   Menu,
   X,
 } from "lucide-react";
+
 interface SidebarProps {
   onNavigate: (view: string) => void;
   currentView: string;
 }
+
 export function Sidebar({ onNavigate, currentView }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
   const navItems = [
     {
       icon: Home,
       label: "Home",
       view: "home",
+      path: "/",
     },
     {
       icon: InboxIcon,
       label: "Tickets",
       view: "tickets",
+      path: "/tickets",
     },
     {
       icon: Users,
       label: "Customers",
       view: "customers",
+      path: "/customers",
     },
     {
       icon: BarChart2,
       label: "Analytics",
       view: "analytics",
+      path: "/analytics",
     },
     {
       icon: Settings,
       label: "Settings",
       view: "settings",
+      path: "/settings",
     },
     {
       icon: HelpCircle,
       label: "Help Center",
       view: "help",
+      path: "/help",
     },
   ];
+
+  const handleNavigation = (item: typeof navItems[0]) => {
+    onNavigate(item.view);
+    navigate(item.path);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <>
       <button
@@ -79,19 +97,18 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         <div className="flex-1 py-4">
           <nav className="space-y-1">
             {navItems.map((item) => (
-              <a
+              <button
                 key={item.label}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onNavigate(item.view);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex items-center px-4 py-2 ${currentView === item.view ? "bg-[#2F4A63] text-white" : "text-gray-300 hover:bg-[#2F4A63] hover:text-white"}`}
+                onClick={() => handleNavigation(item)}
+                className={`flex items-center px-4 py-2 w-full ${
+                  currentView === item.view
+                    ? "bg-[#2F4A63] text-white"
+                    : "text-gray-300 hover:bg-[#2F4A63] hover:text-white"
+                }`}
               >
                 <item.icon className="w-5 h-5 mr-3" />
                 {item.label}
-              </a>
+              </button>
             ))}
           </nav>
         </div>
