@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabaseClient'
 import { vi } from 'vitest'
-import { AuthError } from '@supabase/supabase-js'
+import { AuthError, AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 const mockUser = {
   id: 'test-user-id',
@@ -28,19 +28,15 @@ export const mockAuthSession = () => {
   })
 
   // Mock onAuthStateChange
-  vi.spyOn(supabase.auth, 'onAuthStateChange').mockImplementation((callback) => {
-    callback('SIGNED_IN', mockSession)
-    return {
-      data: {
-        subscription: {
-          id: 'fake-sub-id',
-          callback: () => {},
-          unsubscribe: () => {}
-        }
-      },
-      error: null
+  vi.spyOn(supabase.auth, 'onAuthStateChange').mockImplementation(
+    (callback: (event: AuthChangeEvent, session: Session | null) => void) => {
+      callback('SIGNED_IN', mockSession)
+      return {
+        data: { subscription: { id: 'mock-sub', callback: () => {}, unsubscribe: () => {} } },
+        error: null
+      }
     }
-  })
+  )
 
   // Mock signInWithPassword
   vi.spyOn(supabase.auth, 'signInWithPassword').mockResolvedValue({
