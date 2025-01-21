@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/react";
 import './index.css'
 import { App } from './App'
 import { initSentry } from './config/sentry'
-
+import './styles/globals.css'
 // Initialize Sentry
 initSentry();
 

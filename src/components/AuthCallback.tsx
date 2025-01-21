@@ -1,11 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import * as Sentry from "@sentry/react";
+import { SignupWalkthrough } from './signup/SignupWalkthrough';
 
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -55,8 +57,24 @@ export const AuthCallback = () => {
           navigate('/login?error=invalid_domain')
           return
         }
-        
-        navigate('/')
+
+        // Check if this is the user's first sign in
+        const { data: userProfile, error: userProfileError } = await supabase
+          .from('user_profiles')
+          .select('has_completed_walkthrough')
+          .eq('user_id', sessionData.session.user.id)
+          .single()
+
+        if (userProfileError && userProfileError.code !== 'PGRST116') {
+          throw userProfileError
+        }
+
+        // If no profile exists or walkthrough hasn't been completed, show walkthrough
+        if (!userProfile || !userProfile.has_completed_walkthrough) {
+          setShowWalkthrough(true)
+        } else {
+          navigate('/')
+        }
       } catch (error) {
         console.error('Auth callback error:', error)
         Sentry.captureException(error, {
@@ -72,14 +90,50 @@ export const AuthCallback = () => {
     }
   }, [location.hash, navigate])
 
+  const handleWalkthroughComplete = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('No session found')
+
+      // Update or create user profile with walkthrough completion
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: session.user.id,
+          has_completed_walkthrough: true,
+          updated_at: new Date().toISOString()
+        })
+
+      if (upsertError) throw upsertError
+      navigate('/')
+    } catch (error) {
+      console.error('Error updating walkthrough status:', error)
+      Sentry.captureException(error, {
+        tags: { component: 'AuthCallback' }
+      })
+      // Navigate anyway to not block the user
+      navigate('/')
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-sm">
-        <div className="flex items-center space-x-4">
-          <div className="w-8 h-8 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin" />
-          <p className="text-lg text-gray-600">Verifying your account...</p>
+    <>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-4">
+            <div className="w-8 h-8 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin" />
+            <p className="text-lg text-gray-600">Verifying your account...</p>
+          </div>
         </div>
       </div>
-    </div>
+
+      <SignupWalkthrough 
+        open={showWalkthrough} 
+        onOpenChange={(open) => {
+          setShowWalkthrough(open)
+          if (!open) handleWalkthroughComplete()
+        }} 
+      />
+    </>
   )
 } 
