@@ -4,16 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
-
-interface Ticket {
-  id: number;
-  subject: string;
-  customer: string;
-  status: string;
-  priority: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Ticket, formatUser } from "../types/ticket";
 
 export function TicketList() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -39,7 +30,13 @@ export function TicketList() {
             status,
             priority,
             created_at,
-            updated_at
+            updated_at,
+            created_by:users!tickets_created_by_users_id_fk (
+              id,
+              first_name,
+              last_name
+            ),
+            company_id
           `);
 
         // If user is a customer, only show their tickets
@@ -49,17 +46,22 @@ export function TicketList() {
 
         const { data, error } = await query
           .order('created_at', { ascending: false });
-
         if (error) throw error;
-
+        
         const formattedTickets = data.map(ticket => ({
           id: ticket.id,
           subject: ticket.subject,
-          customer: ticket.profiles?.[0]?.full_name || 'Unknown Customer',
           status: ticket.status,
           priority: ticket.priority,
           created_at: ticket.created_at,
-          updated_at: ticket.updated_at
+          updated_at: ticket.updated_at,
+          companyId: ticket.company_id,
+          created_by: formatUser(ticket.created_by),
+          description: null,
+          topic: null,
+          type: null,
+          assigned_to: null,
+          tags: []
         }));
 
         setTickets(formattedTickets);
@@ -135,8 +137,8 @@ export function TicketList() {
                   <div className="flex items-center space-x-2">
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.status === "Open" ? "bg-green-100 text-green-800" 
-                        : ticket.status === "Pending" ? "bg-yellow-100 text-yellow-800" 
+                        ticket.status === "open" ? "bg-green-100 text-green-800" 
+                        : ticket.status === "pending" ? "bg-yellow-100 text-yellow-800" 
                         : "bg-blue-100 text-blue-800"
                       }`}
                     >
@@ -144,8 +146,8 @@ export function TicketList() {
                     </span>
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.priority === "High" ? "bg-red-100 text-red-800"
-                        : ticket.priority === "Medium" ? "bg-orange-100 text-orange-800"
+                        ticket.priority === "high" ? "bg-red-100 text-red-800"
+                        : ticket.priority === "medium" ? "bg-orange-100 text-orange-800"
                         : "bg-gray-100 text-gray-800"
                       }`}
                     >

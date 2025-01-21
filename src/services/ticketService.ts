@@ -13,15 +13,22 @@ export const ticketService = {
         priority,
         created_at,
         updated_at,
-        created_by:profiles!tickets_created_by_fkey (
+        company_id,
+        created_by:users!tickets_created_by_users_id_fk (
           id,
+          email,
           first_name,
-          last_name
+          last_name,
+          role,
+          company_id
         ),
-        assigned_to:profiles!tickets_assigned_to_fkey (
+        assigned_to:users!tickets_assigned_to_users_id_fk (
           id,
+          email,
           first_name,
-          last_name
+          last_name,
+          role,
+          company_id
         )
       `);
 
@@ -33,19 +40,18 @@ export const ticketService = {
     if (error) throw error;
 
     return data.map(ticket => ({
-      ...ticket,
-      created_by: {
-        id: ticket.created_by.id,
-        full_name: `${ticket.created_by.first_name} ${ticket.created_by.last_name}`.trim(),
-        first_name: ticket.created_by.first_name,
-        last_name: ticket.created_by.last_name
-      },
-      assigned_to: ticket.assigned_to ? {
-        id: ticket.assigned_to.id,
-        full_name: `${ticket.assigned_to.first_name} ${ticket.assigned_to.last_name}`.trim(),
-        first_name: ticket.assigned_to.first_name,
-        last_name: ticket.assigned_to.last_name
-      } : null
+      id: ticket.id,
+      subject: ticket.subject,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at,
+      companyId: ticket.company_id,
+      created_by: formatUser(ticket.created_by),
+      assigned_to: ticket.assigned_to ? formatUser(ticket.assigned_to) : null,
+      topic: null,
+      type: null
     })) as Ticket[];
   },
 
@@ -90,9 +96,10 @@ export const ticketService = {
 
     return {
       ...ticketData,
+      companyId: ticketData.company_id,
       created_by: formatUser(ticketData.created_by),
       assigned_to: ticketData.assigned_to ? formatUser(ticketData.assigned_to) : null,
-      tags: ticketData.ticket_tags.map(tag => ({ tag_id: tag.tag_id })),
+      tags: ticketData.ticket_tags.map(tag => ({ id: tag.tag_id, name: '', tag_id: tag.tag_id })),
       comments: [],
       events: []
     } as Ticket;

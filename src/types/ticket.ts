@@ -1,10 +1,10 @@
 export interface User {
   id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: 'admin' | 'agent' | 'customer';
-  company_id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: 'admin' | 'agent' | 'customer';  // make it optional
+  company_id?: string;                    // make it optional
   full_name?: string;
 }
 
@@ -32,23 +32,27 @@ export interface TicketMessage {
   message_type: 'public' | 'internal_note';
 }
 
-export interface Profile {
+export interface Tag {
   id: string;
-  full_name: string;
-  first_name?: string;
-  last_name?: string;
+  name: string;
+  tag_id?: string;
 }
 
 export interface Ticket {
   id: string;
   subject: string;
+  description?: string | null;
   status: 'open' | 'pending' | 'closed';
   priority: 'low' | 'medium' | 'high';
+  companyId: string;
+  topic?: string | null;
+  customer?: string;
+  type?: string | null;
   created_at: string;
   updated_at: string;
-  created_by: Profile;
-  assigned_to: Profile | null;
-  description: string;
+  created_by?: User;
+  assigned_to?: User | null;
+  tags?: Tag[];
 }
 
 export type TicketStatus = 'open' | 'pending' | 'closed';

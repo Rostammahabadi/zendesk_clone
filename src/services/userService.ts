@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { Agent, Customer, User, UserRole } from '../types/user';
+import { Agent } from '../types/user';
 
 
 export const userService = {

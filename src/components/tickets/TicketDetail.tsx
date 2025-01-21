@@ -69,7 +69,7 @@ export function TicketDetail() {
           ticketService.fetchTicketMessages(ticketId)
         ]);
 
-        setTicket({ ...ticketData, events: eventsData });
+        setTicket(ticketData);
         setEvents(eventsData);
         setPublicMessages(messagesData.filter(msg => msg.message_type === 'public'));
         setInternalNotes(messagesData.filter(msg => msg.message_type === 'internal_note'));
@@ -89,7 +89,7 @@ export function TicketDetail() {
     if (!scrollableRef.current) return;
     const container = scrollableRef.current;
     container.scrollTop = container.scrollHeight;
-  }, [ticket?.events]);
+  }, [events]);
 
   const handleBack = () => {
     navigate(`/${role}/dashboard/tickets`);
@@ -229,7 +229,7 @@ export function TicketDetail() {
                 <Tag className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Tags:</span>
                 <TagInput
-                  tags={ticket.tags.map(tag => tag.tag_id)}
+                  tags={ticket.tags?.map(tag => tag.id) || []}
                   onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
                 />
               </div>

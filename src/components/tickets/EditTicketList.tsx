@@ -34,7 +34,7 @@ export function EditTicketList() {
       try {
         setIsLoading(true);
         const ticketData = await ticketService.fetchTicket(ticketId);
-        const agentsData = await ticketService.fetchAgents(ticketData.company_id);
+        const agentsData = await ticketService.fetchAgents(ticketData.companyId);
         const messagesData = await ticketService.fetchTicketMessages(ticketId);
 
         setTicket(ticketData);
@@ -138,7 +138,7 @@ export function EditTicketList() {
               <div className="flex items-center space-x-2">
                 <User className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Requester:</span>
-                <span className="text-sm font-medium">{ticket.created_by.full_name}</span>
+                <span className="text-sm font-medium">{ticket.created_by?.full_name}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Users className="w-4 h-4 text-gray-500" />
@@ -167,7 +167,7 @@ export function EditTicketList() {
                 <Hash className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Type:</span>
                 <select
-                  value={ticket.type}
+                  value={ticket.type || ''}
                   onChange={(e) => handleFieldUpdate('type', e.target.value)}
                   className="text-sm border-0 bg-transparent focus:ring-0"
                 >
@@ -197,7 +197,7 @@ export function EditTicketList() {
                 <MessageSquare className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Topic:</span>
                 <select
-                  value={ticket.topic}
+                  value={ticket.topic || ''}
                   onChange={(e) => handleFieldUpdate('topic', e.target.value)}
                   className="text-sm border-0 bg-transparent focus:ring-0"
                 >

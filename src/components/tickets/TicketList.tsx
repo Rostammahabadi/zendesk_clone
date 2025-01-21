@@ -95,7 +95,7 @@ export function TicketList() {
                   <div>
                     <h3 className="font-medium">{ticket.subject}</h3>
                     <p className="text-sm text-gray-600">
-                      {ticket.created_by.full_name}
+                      {ticket.created_by?.full_name || 'Unknown Customer'}
                       {ticket.assigned_to && ` • Assigned to ${ticket.assigned_to.full_name}`}
                     </p>
                   </div>

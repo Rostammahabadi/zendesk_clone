@@ -31,6 +31,8 @@ export const tickets = pgTable('tickets', {
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .default(sql`NOW()`),
+  assigned_to: uuid('assigned_to')
+    .references(() => users.id, { onDelete: 'set null' }),
 }, (table) => ({
   companyIdIdx: index('idx_tickets_company_id').on(table.companyId),
   createdByIdx: index('idx_tickets_created_by').on(table.createdBy),
