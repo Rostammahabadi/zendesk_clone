@@ -1,48 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
+import { useAuth } from "../../hooks/useAuth";
 
 interface NewTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const users = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
-  },
-];
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
 
-const statusOptions = ["Open", "Pending", "In Progress", "Resolved"];
-const priorityOptions = ["Low", "Medium", "High", "Urgent"];
+type TicketStatus = 'open' | 'pending' | 'closed';
+type TicketPriority = 'low' | 'medium' | 'high';
+type TicketTopic = 'support' | 'billing' | 'technical';
+type TicketType = 'question' | 'problem' | 'feature_request';
+
+const statusOptions: TicketStatus[] = ['open', 'pending', 'closed'];
+const priorityOptions: TicketPriority[] = ['low', 'medium', 'high'];
+const topicOptions: TicketTopic[] = ['support', 'billing', 'technical'];
+const typeOptions: TicketType[] = ['question', 'problem', 'feature_request'];
 
 export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   const [step, setStep] = useState(1);
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
-    status: "Open",
-    priority: "Medium",
-    assignee: null as number | null,
+    status: "open" as TicketStatus,
+    priority: "medium" as TicketPriority,
+    topic: "support" as TicketTopic,
+    type: "question" as TicketType,
+    assigned_to: null as string | null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [agents, setAgents] = useState<Profile[]>([]);
+
+  // Fetch agents when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAgents();
+    }
+  }, [isOpen]);
+
+  const fetchAgents = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (profile) {
+        const { data: agentsData, error } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .eq('company_id', profile.company_id)
+          .in('role', ['agent', 'admin']);
+
+        if (error) throw error;
+        setAgents(agentsData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      toast.error('Failed to load agents');
+    }
+  };
 
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
@@ -69,16 +97,11 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
       try {
         setIsLoading(true);
         
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!user) throw new Error("No user found");
-
-        // Get user's profile to get company_id
+        // Get current user's profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('company_id, id')
-          .eq('user_id', user.id)
+          .select('id, company_id')
+          .eq('user_id', user?.id)
           .single();
 
         if (profileError) throw profileError;
@@ -90,12 +113,14 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
           .insert({
             subject: formData.subject,
             description: formData.description,
-            status: formData.status.toLowerCase(),
-            priority: formData.priority.toLowerCase(),
-            assigned_to: formData.assignee || null,
+            status: formData.status,
+            priority: formData.priority,
+            topic: formData.topic,
+            type: formData.type,
+            assigned_to: formData.assigned_to,
             created_by: profile.id,
             company_id: profile.company_id,
-          })
+          });
 
         if (ticketError) throw ticketError;
 
@@ -193,39 +218,26 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                     Assignee
                   </label>
                   <div className="space-y-2">
-                    {users.map((user) => (
-                      <div
-                        key={user.id}
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            assignee: user.id,
-                          })
-                        }
-                        className={`p-3 border rounded-lg cursor-pointer flex items-center space-x-3 ${formData.assignee === user.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}
-                      >
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full"
-                        />
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    <select
+                      value={formData.assigned_to || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          assigned_to: e.target.value || null,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Unassigned</option>
+                      {agents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.first_name} {agent.last_name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  {errors.assignee && (
-                    <p className="mt-1 text-sm text-red-500 flex items-center">
-                      <AlertCircle className="w-4 h-4 mr-1" />
-                      {errors.assignee}
-                    </p>
-                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Status
@@ -235,14 +247,14 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          status: e.target.value,
+                          status: e.target.value as TicketStatus,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {statusOptions.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
                         </option>
                       ))}
                     </select>
@@ -256,14 +268,56 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          priority: e.target.value,
+                          priority: e.target.value as TicketPriority,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {priorityOptions.map((priority) => (
                         <option key={priority} value={priority}>
-                          {priority}
+                          {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Topic
+                    </label>
+                    <select
+                      value={formData.topic}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          topic: e.target.value as TicketTopic,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {topicOptions.map((topic) => (
+                        <option key={topic} value={topic}>
+                          {topic.charAt(0).toUpperCase() + topic.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Type
+                    </label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          type: e.target.value as TicketType,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {typeOptions.map((type) => (
+                        <option key={type} value={type}>
+                          {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                         </option>
                       ))}
                     </select>
@@ -287,8 +341,12 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
             )}
             <button
               onClick={step === 1 ? handleNext : handleSubmit}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              disabled={isLoading}
+              className={`flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : null}
               {step === 1 ? (
                 <>
                   Next

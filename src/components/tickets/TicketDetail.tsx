@@ -24,6 +24,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
+import { TagInput } from "../ui/TagInput";
 
 interface Profile {
   id: string;
@@ -46,12 +47,20 @@ interface Ticket {
   description: string;
   status: 'open' | 'pending' | 'closed';
   priority: 'low' | 'medium' | 'high';
+  topic: 'support' | 'billing' | 'technical';
+  type: 'question' | 'problem' | 'feature_request';
   created_at: string;
   updated_at: string;
   created_by: Profile;
   assigned_to: Profile | null;
+  company_id: string;
   comments: TicketComment[];
 }
+
+const statusOptions = ['open', 'pending', 'closed'];
+const priorityOptions = ['low', 'medium', 'high'];
+const topicOptions = ['support', 'billing', 'technical'];
+const typeOptions = ['question', 'problem', 'feature_request'];
 
 export function TicketDetail() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -74,7 +83,10 @@ export function TicketDetail() {
             description,
             status,
             priority,
+            topic,
+            type,
             created_at,
+            tags,
             updated_at,
             created_by:profiles!tickets_created_by_profiles_id_fk (
               id,
@@ -111,6 +123,7 @@ export function TicketDetail() {
 
         if (commentsError) throw commentsError;
 
+        // Format the ticket data with full names
         const formattedTicket = {
           ...ticketData,
           created_by: {
@@ -149,6 +162,25 @@ export function TicketDetail() {
     navigate(`/${role}/dashboard/tickets`);
   };
 
+  const handleFieldUpdate = async (field: keyof Ticket, value: any) => {
+    if (!ticket) return;
+
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ [field]: value })
+        .eq('id', ticket.id);
+
+      if (error) throw error;
+
+      setTicket(prev => prev ? { ...prev, [field]: value } : null);
+      toast.success(`Updated ${field} successfully`);
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      toast.error(`Failed to update ${field}`);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!message.trim() || !ticket || !user) return;
 
@@ -160,14 +192,14 @@ export function TicketDetail() {
           message: message.trim(),
           author_id: user.id,
           is_internal: false,
-          company_id: ticket.company_id // Assuming ticket has company_id
+          company_id: ticket.company_id
         });
 
       if (error) throw error;
 
       toast.success('Comment added successfully');
       setMessage('');
-      // Refresh ticket data to show new comment
+      // Refresh ticket data
       window.location.reload();
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -234,10 +266,9 @@ export function TicketDetail() {
               <div className="flex items-center space-x-2">
                 <Tag className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Tags:</span>
-                <input
-                  type="text"
-                  placeholder="Add tags..."
-                  className="text-sm border-0 bg-transparent focus:ring-0"
+                <TagInput
+                  tags={ticket.tags || []}
+                  onTagsChange={(tags) => handleFieldUpdate('tags', tags)}
                 />
               </div>
             </div>
@@ -245,29 +276,63 @@ export function TicketDetail() {
               <div className="flex items-center space-x-2">
                 <Hash className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Type:</span>
-                <select className="text-sm border-0 bg-transparent focus:ring-0">
-                  <option>Question</option>
-                  <option>Problem</option>
-                  <option>Feature Request</option>
+                <select
+                  value={ticket?.type || 'question'}
+                  onChange={(e) => handleFieldUpdate('type', e.target.value)}
+                  className="text-sm border-0 bg-transparent focus:ring-0"
+                >
+                  {typeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
                 <Flag className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Priority:</span>
-                <select className="text-sm border-0 bg-transparent focus:ring-0">
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                  <option>Urgent</option>
+                <select 
+                  value={ticket?.priority || 'medium'}
+                  onChange={(e) => handleFieldUpdate('priority', e.target.value)}
+                  className="text-sm border-0 bg-transparent focus:ring-0"
+                >
+                  {priorityOptions.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
                 <MessageSquare className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Topic:</span>
-                <select className="text-sm border-0 bg-transparent focus:ring-0">
-                  <option>Support</option>
-                  <option>Billing</option>
-                  <option>Technical</option>
+                <select
+                  value={ticket?.topic || 'support'}
+                  onChange={(e) => handleFieldUpdate('topic', e.target.value)}
+                  className="text-sm border-0 bg-transparent focus:ring-0"
+                >
+                  {topicOptions.map((topic) => (
+                    <option key={topic} value={topic}>
+                      {topic.charAt(0).toUpperCase() + topic.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Tag className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-600">Status:</span>
+                <select
+                  value={ticket?.status || 'open'}
+                  onChange={(e) => handleFieldUpdate('status', e.target.value)}
+                  className="text-sm border-0 bg-transparent focus:ring-0"
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
