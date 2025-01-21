@@ -6,7 +6,6 @@ import {
   Flag,
   MessageSquare,
   Clock,
-  ChevronDown,
   X,
   Paperclip,
   Smile,
@@ -16,7 +15,6 @@ import {
   AlignLeft,
   List,
   ListOrdered,
-  FileText,
   Send,
   History,
 } from "lucide-react";
@@ -25,8 +23,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
-import { Ticket, TicketEvent, TicketMessage } from '../../types/ticket';
+import { Ticket, TicketEvent, TicketMessage, formatTicketMessage } from '../../types/ticket';
 import { ticketService } from '../../services/ticketService';
+import { supabase } from '../../lib/supabaseClient';
 
 interface User {
   id: string;
@@ -54,7 +53,7 @@ export function TicketDetail() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [internalNote, setInternalNote] = useState("");
-  const [showMacros, setShowMacros] = useState(false);
+  const [showMacros] = useState(false);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,6 +82,60 @@ export function TicketDetail() {
     };
 
     fetchTicketData();
+
+    // Set up realtime subscriptions
+    const ticketSubscription = supabase
+      .channel('ticket_changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tickets',
+        filter: `id=eq.${ticketId}`
+      }, (payload) => {
+        setTicket(prev => prev ? { ...prev, ...payload.new } : null);
+      })
+      .subscribe();
+
+    const eventsSubscription = supabase
+      .channel('ticket_events')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_events',
+        filter: `ticket_id=eq.${ticketId}`
+      }, (payload) => {
+        setEvents(prev => [...prev, payload.new as TicketEvent]);
+      })
+      .subscribe();
+
+    const messagesSubscription = supabase
+      .channel('ticket_messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_messages',
+        filter: `ticket_id=eq.${ticketId}`
+      }, async (payload) => {
+        const { data: senderData } = await supabase
+          .from('users')
+          .select('id, email, first_name, last_name, role, company_id')
+          .eq('id', payload.new.sender_id)
+          .single();
+          
+        const message = formatTicketMessage({ ...payload.new, sender: senderData });
+        if (message.message_type === 'public') {
+          setPublicMessages(prev => [...prev, message]);
+        } else {
+          setInternalNotes(prev => [...prev, message]);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      ticketSubscription.unsubscribe();
+      eventsSubscription.unsubscribe();
+      messagesSubscription.unsubscribe();
+    };
   }, [ticketId, role]);
 
   useEffect(() => {
@@ -303,8 +356,8 @@ export function TicketDetail() {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Messages Thread */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 overflow-auto p-4 space-y-4">
+          <div className="flex-1 flex flex-col h-[calc(100vh-200px)]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {publicMessages.map(message => (
                 <div key={message.id} className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -328,7 +381,7 @@ export function TicketDetail() {
               ))}
             </div>
             {/* Reply Box */}
-            <div className="border-t border-gray-200 p-4">
+            <div className="border-t border-gray-200 p-4 bg-white">
               <div className="relative">
                 <div className="border rounded-lg">
                   {/* Toolbar */}
@@ -380,14 +433,14 @@ export function TicketDetail() {
                 {/* Macro Button */}
                 <div className="absolute bottom-full mb-2">
                   <div className="relative">
-                    <button
+                    {/* <button
                       onClick={() => setShowMacros(!showMacros)}
                       className="flex items-center space-x-2 px-3 py-1.5 border rounded-lg hover:bg-gray-50"
                     >
                       <FileText className="w-4 h-4" />
                       <span>Apply Macro</span>
                       <ChevronDown className="w-4 h-4" />
-                    </button>
+                    </button> */}
                     {showMacros && (
                       <div className="absolute left-0 bottom-full mb-1 w-64 bg-white border rounded-lg shadow-lg p-2">
                         <div className="space-y-1">
