@@ -18,6 +18,7 @@ import {
   ListOrdered,
   FileText,
   Send,
+  History,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -26,19 +27,30 @@ import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
 
-interface Profile {
+interface User {
   id: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: 'admin' | 'agent' | 'customer';
+  company_id: string;
+  full_name?: string;
 }
 
 interface TicketComment {
   id: string;
-  message: string;
-  is_internal: boolean;
+  body: string;
   created_at: string;
-  author: Profile;
+  author: User;
+}
+
+interface TicketEvent {
+  id: string;
+  event_type: 'created' | 'updated_description' | 'comment_added' | 'assigned' | 'priority_changed' | 'topic_changed' | 'type_changed' | 'tags_added' | 'tags_removed' | 'closed' | 'reopened' | 'merged' | 'status_changed';
+  old_value: string | null;
+  new_value: string | null;
+  triggered_by: User | null;
+  created_at: string;
 }
 
 interface Ticket {
@@ -51,10 +63,12 @@ interface Ticket {
   type: 'question' | 'problem' | 'feature_request';
   created_at: string;
   updated_at: string;
-  created_by: Profile;
-  assigned_to: Profile | null;
+  created_by: User;
+  assigned_to: User | null;
   company_id: string;
   comments: TicketComment[];
+  tags: { tag_id: string }[];
+  events: TicketEvent[];
 }
 
 const statusOptions = ['open', 'pending', 'closed'];
@@ -86,17 +100,26 @@ export function TicketDetail() {
             topic,
             type,
             created_at,
-            tags,
             updated_at,
-            created_by:profiles!tickets_created_by_profiles_id_fk (
+            company_id,
+            created_by:users!tickets_created_by_users_id_fk (
               id,
+              email,
               first_name,
-              last_name
+              last_name,
+              role,
+              company_id
             ),
-            assigned_to:profiles!tickets_assigned_to_profiles_id_fk (
+            assigned_to:users!tickets_assigned_to_users_id_fk (
               id,
+              email,
               first_name,
-              last_name
+              last_name,
+              role,
+              company_id
+            ),
+            ticket_tags (
+              tag_id
             )
           `)
           .eq('id', ticketId)
@@ -106,16 +129,18 @@ export function TicketDetail() {
 
         // Fetch comments for the ticket
         const { data: commentsData, error: commentsError } = await supabase
-          .from('ticket_comments')
+          .from('ticket_messages')
           .select(`
             id,
-            message,
-            is_internal,
+            body,
             created_at,
-            author:profiles!ticket_comments_author_id_profiles_id_fk (
+            author:sender_id (
               id,
+              email,
               first_name,
-              last_name
+              last_name,
+              role,
+              company_id
             )
           `)
           .eq('ticket_id', ticketId)
@@ -123,24 +148,55 @@ export function TicketDetail() {
 
         if (commentsError) throw commentsError;
 
+        // Fetch events for the ticket
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('ticket_events')
+          .select(`
+            id,
+            event_type,
+            old_value,
+            new_value,
+            created_at,
+            triggered_by:users!ticket_events_triggered_by_users_id_fk (
+              id,
+              email,
+              first_name,
+              last_name,
+              role,
+              company_id
+            )
+          `)
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: true });
+
+        if (eventsError) throw eventsError;
+
         // Format the ticket data with full names
-        const formattedTicket = {
+        const formattedTicket: Ticket = {
           ...ticketData,
           created_by: {
             ...ticketData.created_by,
-            full_name: `${ticketData.created_by.first_name} ${ticketData.created_by.last_name}`.trim()
+            full_name: `${ticketData.created_by?.first_name || ''} ${ticketData.created_by?.last_name || ''}`.trim()
           },
           assigned_to: ticketData.assigned_to ? {
             ...ticketData.assigned_to,
-            full_name: `${ticketData.assigned_to.first_name} ${ticketData.assigned_to.last_name}`.trim()
+            full_name: `${ticketData.assigned_to.first_name || ''} ${ticketData.assigned_to.last_name || ''}`.trim()
           } : null,
           comments: commentsData.map(comment => ({
             ...comment,
             author: {
               ...comment.author,
-              full_name: `${comment.author.first_name} ${comment.author.last_name}`.trim()
+              full_name: `${comment.author?.first_name || ''} ${comment.author?.last_name || ''}`.trim()
             }
-          }))
+          })),
+          events: eventsData.map(event => ({
+            ...event,
+            triggered_by: event.triggered_by ? {
+              ...event.triggered_by,
+              full_name: `${event.triggered_by.first_name || ''} ${event.triggered_by.last_name || ''}`.trim()
+            } : null
+          })),
+          tags: ticketData.ticket_tags.map(tag => ({ tag_id: tag.tag_id }))
         };
 
         setTicket(formattedTicket);
@@ -191,7 +247,6 @@ export function TicketDetail() {
           ticket_id: ticket.id,
           message: message.trim(),
           author_id: user.id,
-          is_internal: false,
           company_id: ticket.company_id
         });
 
@@ -204,6 +259,40 @@ export function TicketDetail() {
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
+    }
+  };
+
+  const getEventDescription = (event: TicketEvent) => {
+    console.log(event)
+    switch (event.event_type) {
+      case 'created':
+        return 'Ticket created';
+      case 'updated_description':
+        return 'Description updated';
+      case 'comment_added':
+        return 'Comment added';
+      case 'assigned':
+        return `Assigned to ${event.new_value}`;
+      case 'priority_changed':
+        return `Priority changed from ${event.old_value} to ${event.new_value}`;
+      case 'topic_changed':
+        return `Topic changed from ${event.old_value} to ${event.new_value}`;
+      case 'type_changed':
+        return `Type changed from ${event.old_value} to ${event.new_value}`;
+      case 'tags_added':
+        return `Tags added: ${event.new_value}`;
+      case 'tags_removed':
+        return `Tags removed: ${event.old_value}`;
+      case 'status_changed':
+        return `Status changed from ${event.old_value} to ${event.new_value}`;
+      case 'closed':
+        return 'Ticket closed';
+      case 'reopened':
+        return 'Ticket reopened';
+      case 'merged':
+        return `Merged with ticket ${event.new_value}`;
+      default:
+        return 'Unknown event';
     }
   };
 
@@ -253,7 +342,9 @@ export function TicketDetail() {
               <div className="flex items-center space-x-2">
                 <User className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Requester:</span>
-                <span className="text-sm font-medium">{ticket.created_by.full_name}</span>
+                <span className="text-sm font-medium">
+                  {ticket.created_by?.full_name || 'Unknown User'}
+                </span>
               </div>
               <div className="flex items-center space-x-2">
                 <Users className="w-4 h-4 text-gray-500" />
@@ -267,8 +358,8 @@ export function TicketDetail() {
                 <Tag className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Tags:</span>
                 <TagInput
-                  tags={ticket.tags || []}
-                  onTagsChange={(tags) => handleFieldUpdate('tags', tags)}
+                  tags={ticket.tags.map(tag => tag.tag_id)}
+                  onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
                 />
               </div>
             </div>
@@ -348,19 +439,19 @@ export function TicketDetail() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                        {comment.author.full_name[0]}
+                        {comment.author?.full_name?.[0] || '?'}
                       </div>
                       <div>
-                        <div className="font-medium">{comment.author.full_name}</div>
+                        <div className="font-medium">{comment.author?.full_name || 'Unknown User'}</div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {comment.created_at}
+                          {new Date(comment.created_at).toLocaleString()}
                         </div>
                       </div>
                     </div>
                   </div>
                   <p className="text-gray-700">
-                    {comment.message}
+                    {comment.body}
                   </p>
                 </div>
               ))}
@@ -461,22 +552,22 @@ export function TicketDetail() {
                 </button>
               </div>
               <div className="mt-6">
-                <h3 className="font-medium mb-4">Interaction History</h3>
+                <h3 className="font-medium mb-4">Activity History</h3>
                 <div className="space-y-3">
-                  <div className="text-sm">
-                    <div className="flex items-center text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
-                      <span>2 hours ago</span>
+                  {ticket?.events.map((event) => (
+                    <div key={event.id} className="text-sm">
+                      <div className="flex items-center text-gray-500">
+                        <History className="w-4 h-4 mr-1" />
+                        <span>{new Date(event.created_at).toLocaleString()}</span>
+                      </div>
+                      <p>
+                        {getEventDescription(event)}
+                        {event.triggered_by && (
+                          <span className="text-gray-500"> by {event.triggered_by.full_name}</span>
+                        )}
+                      </p>
                     </div>
-                    <p>Ticket created by {ticket.created_by.full_name}</p>
-                  </div>
-                  <div className="text-sm">
-                    <div className="flex items-center text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
-                      <span>1 hour ago</span>
-                    </div>
-                    <p>Priority changed to {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}</p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NewTicketModal } from "../tickets/NewTicketModal";
+import { AdminHomePage } from "./AdminHomePage";
+import { useAuth } from "../../hooks/useAuth";
 
 const quickActions = [
   {
@@ -84,6 +86,12 @@ const taskSummary = [
 ];
 export function HomePage() {
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
+  const { user } = useAuth();
+
+  // If user is admin, render AdminHomePage
+  if (user.user_metadata.role === 'admin') {
+    return <AdminHomePage />;
+  }
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -94,6 +102,7 @@ export function HomePage() {
     }
   };
 
+  // Regular user view
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6">

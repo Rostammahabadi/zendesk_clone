@@ -15,12 +15,14 @@ interface ValidationErrors {
 }
 
 interface UserProfile {
-  id: string;
-  userId: string;
-  hasCompletedWalkthrough: boolean;
-  currentStep: number;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  role: 'admin' | 'agent' | 'customer'
+  company_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 export const LoginPage = () => {
@@ -134,7 +136,7 @@ export const LoginPage = () => {
         })
         if (error) throw error
         if (!session) throw new Error('No session established')
-
+          
         // Verify authentication state
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Authentication failed')
@@ -154,23 +156,17 @@ export const LoginPage = () => {
 
         // Check if user profile exists
         const { data: userProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, company_id, role')
-          .eq('user_id', user.id)
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
           .single()
-
+        
         if (profileError && profileError.code !== 'PGRST116') {
           throw profileError
         }
 
         // If company exists and user profile exists, they're already set up
         if (existingCompany && userProfile) {
-          // Update user metadata with their role
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: { role: userProfile.role.toLowerCase() }
-          })
-          
-          if (updateError) throw updateError
           
           navigate(`/${userProfile.role.toLowerCase()}/dashboard`)
           return
@@ -179,21 +175,23 @@ export const LoginPage = () => {
         // If company exists but no profile, create profile and auto-join
         if (existingCompany && !userProfile) {
           const { data: newProfile, error: createProfileError } = await supabase
-            .from('profiles')
+            .from('users')
             .insert({
-              user_id: user.id,
+              id: user.id,
+              email: user.email,
               company_id: existingCompany.id,
-              role: 'agent',
-              is_active: true
+              role: 'agent'
             })
             .select()
             .single()
 
           if (createProfileError) throw createProfileError
 
+          setUserProfile(newProfile)
+
           // Update user metadata with their role
           const { error: updateError } = await supabase.auth.updateUser({
-            data: { role: 'agent' }
+            data: { role: 'agent', company_id: existingCompany.id }
           })
           
           if (updateError) throw updateError
@@ -201,23 +199,23 @@ export const LoginPage = () => {
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
           navigate('/agent/dashboard')
           return
-        }
-
-        // If no company exists, create a user profile for walkthrough
-        const { data: createdUserProfile, error: createdUserProfileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: user.id,
-            has_completed_walkthrough: false,
-            current_step: 1,
+        } else if (!existingCompany && !userProfile) {
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { role: 'admin' }  // or 'agent', 'customer', etc.
           })
-          .select()
-          .single()
-
-        if (createdUserProfileError) throw createdUserProfileError
-        
-        setUserProfile(createdUserProfile as UserProfile)
-        // If no company exists, show walkthrough
+          if (updateError) throw updateError
+        }
+          // If no company exists, show walkthrough for company creation
+        setUserProfile({
+          id: user.id,
+          email: user.email || '',
+          first_name: null,
+          last_name: null,
+          role: 'admin',
+          company_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         setShowWalkthrough(true)
       }
     } catch (error) {
@@ -264,31 +262,25 @@ export const LoginPage = () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('No session found')
 
-      // Update user profile with walkthrough completion
-      const { error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: session.user.id,
-          has_completed_walkthrough: true,
-          updated_at: new Date().toISOString()
-        })
-
-      if (upsertError) throw upsertError
-
-      // Get user's role from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Get user's role from users table
+      const { data: user, error: userError } = await supabase
+        .from('users')
         .select('role')
-        .eq('user_id', session.user.id)
+        .eq('id', session.user.id)
         .single()
 
-      if (profileError) throw profileError
-      if (!profile) throw new Error('Profile not found')
+      if (userError) throw userError
+      if (!user) throw new Error('User not found')
+
+      // Update user metadata with role
+      await supabase.auth.updateUser({
+        data: { role: user.role.toLowerCase() }
+      })
 
       // Navigate to role-specific dashboard
-      navigate(`/${profile.role.toLowerCase()}/dashboard`)
+      navigate(`/${user.role.toLowerCase()}/dashboard`)
     } catch (error) {
-      console.error('Error updating walkthrough status:', error)
+      console.error('Error completing setup:', error)
       // Navigate to default dashboard if role fetch fails
       navigate('/dashboard')
     }
@@ -449,11 +441,13 @@ export const LoginPage = () => {
         }}
         userProfile={userProfile ?? {
           id: '',
-          userId: '',
-          hasCompletedWalkthrough: false,
-          currentStep: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          email: '',
+          first_name: null,
+          last_name: null,
+          role: 'agent',
+          company_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }}
       />
     </>

@@ -18,16 +18,18 @@ type Step = 1 | 2 | 3;
 
 interface TeamMember {
   email: string;
-  role: "admin" | "member";
+  role: "admin" | "agent";
 }
 
 interface UserProfile {
   id: string;
-  userId: string;
-  hasCompletedWalkthrough: boolean;
-  currentStep: number;
-  createdAt: string;
-  updatedAt: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: 'admin' | 'agent' | 'customer';
+  company_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SignupWalkthroughProps {
@@ -37,7 +39,9 @@ interface SignupWalkthroughProps {
 }
 
 export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWalkthroughProps) => {
-  const [step, setStep] = useState<Step>((userProfile?.currentStep || 1) as Step);
+  const [step, setStep] = useState<Step>(1);
+  const [firstName, setFirstName] = useState(userProfile.first_name || "");
+  const [lastName, setLastName] = useState(userProfile.last_name || "");
   const [companyName, setCompanyName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -46,38 +50,24 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [emailDomain, setEmailDomain] = useState<string>("");
 
-  const updateUserProfileStep = async (newStep: Step) => {
-    if (!userProfile.id) return; // Don't update if no valid profile
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!user) throw new Error("No user found");
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ 
-          current_step: newStep,
-          has_completed_walkthrough: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating user profile step:', error);
-      toast.error('Failed to update progress');
-    }
-  };
-
   const handleNext = async () => {
     if (step === 1) {
       if (!companyName) {
         toast.error("Please enter your company name");
         return;
       }
+      if (!firstName) {
+        toast.error("Please enter your first name");
+        return;
+      }
+      if (!lastName) {
+        toast.error("Please enter your last name");
+        return;
+      }
 
       setIsLoading(true);
       try {
-        // Get current user and their profile with company
+        // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
         if (!user) throw new Error("No user found");
@@ -87,15 +77,19 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         const domain = user.email.split('@')[1];
         setEmailDomain(domain);
 
+        // Create company
         const { data: newCompany, error: createError } = await supabase
           .from('companies')
           .insert({ 
             name: companyName,
-            domain: domain,
-            user_id: user.id,
+            domain: domain
           })
           .select()
           .single();
+
+        await supabase.auth.updateUser({
+          data: { company_id: newCompany.id }
+        })
 
         if (createError) throw createError;
         if (!newCompany) throw new Error("Failed to create company");
@@ -103,21 +97,25 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         // Store the company ID for later use
         setCompanyId(newCompany.id);
 
-        // Update user's profile with company ID
+        // Create user profile as admin
         const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({ company_id: newCompany.id, user_id: user.id, role: 'admin' })
-          .eq('user_id', user.id);
+          .from('users')
+          .insert({ 
+            id: user.id,
+            email: user.email,
+            first_name: firstName,
+            last_name: lastName,
+            company_id: newCompany.id,
+            role: 'admin'
+          });
 
         if (profileError) throw profileError;
 
         toast.success("Company created successfully!");
-        
-        await updateUserProfileStep(2);
         setStep(2);
       } catch (error: any) {
-        console.error('Error updating company:', error);
-        toast.error(error.message || "Failed to update company");
+        console.error('Error creating company:', error);
+        toast.error(error.message || "Failed to create company");
       } finally {
         setIsLoading(false);
       }
@@ -134,13 +132,12 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
 
       setIsLoading(true);
       try {
-        // Create team using the stored company ID
+        // Create team
         const { data: newTeam, error: teamError } = await supabase
           .from('teams')
           .insert({
             name: teamName,
-            company_id: companyId,
-            created_at: new Date().toISOString()
+            company_id: companyId
           })
           .select()
           .single();
@@ -149,7 +146,6 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         if (!newTeam) throw new Error("Failed to create team");
 
         toast.success("Team created successfully!");
-        await updateUserProfileStep(3);
         setStep(3);
       } catch (error: any) {
         console.error('Error creating team:', error);
@@ -157,38 +153,42 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
       } finally {
         setIsLoading(false);
       }
-    } else {
+    } else if (step === 3) {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
         if (!user) throw new Error("No user found");
 
-        // Get user's role from profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
+        // Process team member invites
+        for (const member of members) {
+          const { error: inviteError } = await supabase
+            .from('users')
+            .insert({
+              email: member.email,
+              company_id: companyId,
+              role: member.role
+            });
 
-        if (profileError) throw profileError;
-        if (!profile) throw new Error("Profile not found");
+          if (inviteError) {
+            console.error(`Failed to create user for ${member.email}:`, inviteError);
+            toast.error(`Failed to invite ${member.email}`);
+          }
+        }
 
-        // Update walkthrough completion status
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({ 
-            has_completed_walkthrough: true,
-            current_step: 3,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userProfile.id);
+        // Update user metadata with role
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { role: 'admin' }
+        });
 
-        if (error) throw error;
-        toast.success("Setup completed!");
+        if (updateError) throw updateError;
+
+        toast.success("Setup completed successfully!");
         onOpenChange(false);
       } catch (error: any) {
-        console.error('Error completing walkthrough:', error);
+        console.error('Error completing setup:', error);
         toast.error(error.message || "Failed to complete setup");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -203,7 +203,7 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
       toast.error("This email has already been added");
       return;
     }
-    setMembers([...members, { email: fullEmail, role: "member" }]);
+    setMembers([...members, { email: fullEmail, role: "agent" }]);
     setNewMemberEmail("");
   };
 
@@ -250,10 +250,31 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
             <DialogHeader>
               <DialogTitle>Welcome to Your Support Desk</DialogTitle>
               <DialogDescription>
-                Let's start by confirming your company name.
+                Let's start by getting to know you and your company.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter your first name"
+                  autoFocus
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter your last name"
+                  disabled={isLoading}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="companyName">Company Name</Label>
                 <Input
@@ -261,7 +282,6 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Enter your company name"
-                  autoFocus
                   disabled={isLoading}
                 />
               </div>

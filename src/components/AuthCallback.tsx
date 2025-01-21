@@ -4,52 +4,46 @@ import { supabase } from '../lib/supabaseClient'
 import * as Sentry from "@sentry/react";
 import { SignupWalkthrough } from './signup/SignupWalkthrough';
 
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: 'admin' | 'agent' | 'customer';
+  company_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const hashParams = new URLSearchParams(location.hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
-
-        if (!accessToken) {
-          const error = new Error('No access token found in callback URL')
-          Sentry.captureException(error, {
-            tags: { component: 'AuthCallback' }
-          })
-          navigate('/auth/auth-code-error')
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+        if (!session) {
+          navigate('/login')
           return
         }
 
-        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        })
-        
-        if (sessionError) throw sessionError
-        if (!sessionData.session) {
-          throw new Error('No session established')
+        // Get user's email domain
+        const emailDomain = session.user.email?.split('@')[1]
+        if (!emailDomain) {
+          throw new Error('Invalid email format')
         }
 
-        // Get the user's email domain
-        const userEmail = sessionData.session.user.email
-        if (!userEmail) {
-          throw new Error('No email found in user profile')
-        }
-
-        const emailDomain = userEmail.split('@')[1]
-
-        // Check if the domain exists in our companies table
-        const { data: companies, error: companiesError } = await supabase
+        // Check if company exists with this domain
+        const { data: companies, error: companyError } = await supabase
           .from('companies')
-          .select('domain')
+          .select('id, name')
           .eq('domain', emailDomain)
 
-        if (companiesError) throw companiesError
+        if (companyError) throw companyError
 
         // If no company found with this domain, sign out and redirect to error
         if (!companies || companies.length === 0) {
@@ -58,22 +52,41 @@ export const AuthCallback = () => {
           return
         }
 
-        // Check if this is the user's first sign in
-        const { data: userProfile, error: userProfileError } = await supabase
-          .from('user_profiles')
-          .select('has_completed_walkthrough')
-          .eq('user_id', sessionData.session.user.id)
+        // Check if user already has a profile
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
           .single()
 
-        if (userProfileError && userProfileError.code !== 'PGRST116') {
-          throw userProfileError
+        if (profileError && profileError.code !== 'PGRST116') {
+          throw profileError
         }
 
-        // If no profile exists or walkthrough hasn't been completed, show walkthrough
-        if (!userProfile || !userProfile.has_completed_walkthrough) {
+        // If user doesn't have a profile, create one and show walkthrough
+        if (!existingProfile) {
+          const { data: newProfile, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: session.user.id,
+              email: session.user.email,
+              company_id: companies[0].id,
+              role: 'agent'
+            })
+            .select()
+            .single()
+
+          if (createError) throw createError
+          setUserProfile(newProfile)
           setShowWalkthrough(true)
         } else {
-          navigate('/')
+          // Update user metadata with their role
+          await supabase.auth.updateUser({
+            data: { role: existingProfile.role.toLowerCase() }
+          })
+          
+          // Navigate to appropriate dashboard
+          navigate(`/${existingProfile.role.toLowerCase()}/dashboard`)
         }
       } catch (error) {
         console.error('Auth callback error:', error)
@@ -85,34 +98,40 @@ export const AuthCallback = () => {
       }
     }
 
-    if (location.hash) {
+    if (location.hash || location.search) {
       handleCallback()
     }
-  }, [location.hash, navigate])
+  }, [location.hash, location.search, navigate])
 
   const handleWalkthroughComplete = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('No session found')
 
-      // Update or create user profile with walkthrough completion
-      const { error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: session.user.id,
-          has_completed_walkthrough: true,
-          updated_at: new Date().toISOString()
-        })
+      // Get user's role from users table
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
 
-      if (upsertError) throw upsertError
-      navigate('/')
+      if (userError) throw userError
+      if (!user) throw new Error('User not found')
+
+      // Update user metadata with role
+      await supabase.auth.updateUser({
+        data: { role: user.role.toLowerCase() }
+      })
+
+      // Navigate to role-specific dashboard
+      navigate(`/${user.role.toLowerCase()}/dashboard`)
     } catch (error) {
-      console.error('Error updating walkthrough status:', error)
+      console.error('Error completing setup:', error)
       Sentry.captureException(error, {
         tags: { component: 'AuthCallback' }
       })
-      // Navigate anyway to not block the user
-      navigate('/')
+      // Navigate to default dashboard if role fetch fails
+      navigate('/dashboard')
     }
   }
 
@@ -127,13 +146,16 @@ export const AuthCallback = () => {
         </div>
       </div>
 
-      <SignupWalkthrough 
-        open={showWalkthrough} 
-        onOpenChange={(open) => {
-          setShowWalkthrough(open)
-          if (!open) handleWalkthroughComplete()
-        }} 
-      />
+      {userProfile && (
+        <SignupWalkthrough 
+          open={showWalkthrough} 
+          onOpenChange={(open) => {
+            setShowWalkthrough(open)
+            if (!open) handleWalkthroughComplete()
+          }}
+          userProfile={userProfile}
+        />
+      )}
     </>
   )
 } 

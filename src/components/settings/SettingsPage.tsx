@@ -104,17 +104,6 @@ export function SettingsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Time Zone
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>(GMT-08:00) Pacific Time</option>
-                    <option>(GMT-05:00) Eastern Time</option>
-                    <option>(GMT+00:00) UTC</option>
-                    <option>(GMT+01:00) Central European Time</option>
-                  </select>
-                </div>
                 <div className="pt-4">
                   <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                     Save Changes

@@ -9,10 +9,13 @@ interface NewTicketModalProps {
   onClose: () => void;
 }
 
-interface Profile {
+interface User {
   id: string;
-  first_name: string;
-  last_name: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: 'admin' | 'agent' | 'customer';
+  company_id: string;
 }
 
 type TicketStatus = 'open' | 'pending' | 'closed';
@@ -39,7 +42,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [agents, setAgents] = useState<Profile[]>([]);
+  const [agents, setAgents] = useState<User[]>([]);
 
   // Fetch agents when modal opens
   useEffect(() => {
@@ -50,17 +53,17 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
 
   const fetchAgents = async () => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: currentUser } = await supabase
+        .from('users')
         .select('company_id')
-        .eq('user_id', user?.id)
+        .eq('id', user?.id)
         .single();
 
-      if (profile) {
+      if (currentUser) {
         const { data: agentsData, error } = await supabase
-          .from('profiles')
+          .from('users')
           .select('id, first_name, last_name')
-          .eq('company_id', profile.company_id)
+          .eq('company_id', currentUser.company_id)
           .in('role', ['agent', 'admin']);
 
         if (error) throw error;
@@ -97,15 +100,15 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
       try {
         setIsLoading(true);
         
-        // Get current user's profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+        // Get current user's data
+        const { data: currentUser, error: userError } = await supabase
+          .from('users')
           .select('id, company_id')
-          .eq('user_id', user?.id)
+          .eq('id', user?.id)
           .single();
 
-        if (profileError) throw profileError;
-        if (!profile) throw new Error("Profile not found");
+        if (userError) throw userError;
+        if (!currentUser) throw new Error("User not found");
 
         // Create the ticket
         const { error: ticketError } = await supabase
@@ -118,8 +121,8 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
             topic: formData.topic,
             type: formData.type,
             assigned_to: formData.assigned_to,
-            created_by: profile.id,
-            company_id: profile.company_id,
+            created_by: currentUser.id,
+            company_id: currentUser.company_id,
           });
 
         if (ticketError) throw ticketError;
