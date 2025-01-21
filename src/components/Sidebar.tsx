@@ -10,6 +10,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 interface SidebarProps {
   onNavigate: (view: string) => void;
@@ -19,45 +20,62 @@ interface SidebarProps {
 export function Sidebar({ onNavigate, currentView }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Get user role from metadata - fallback to customer if not set
+  const userRole = user?.user_metadata?.role || 'customer';
+  
+  const getNavItems = (role: string) => {
+    const baseItems = [
+      {
+        icon: Home,
+        label: "Home",
+        view: "home",
+        path: `/${role}/dashboard`,
+      },
+      {
+        icon: InboxIcon,
+        label: "Tickets",
+        view: "tickets",
+        path: `/${role}/dashboard/tickets`,
+      },
+      {
+        icon: Settings,
+        label: "Settings",
+        view: "settings",
+        path: `/${role}/dashboard/settings`,
+      },
+      {
+        icon: HelpCircle,
+        label: "Help Center",
+        view: "help",
+        path: `/${role}/dashboard/help`,
+      },
+    ];
 
-  const navItems = [
-    {
-      icon: Home,
-      label: "Home",
-      view: "home",
-      path: "/",
-    },
-    {
-      icon: InboxIcon,
-      label: "Tickets",
-      view: "tickets",
-      path: "/tickets",
-    },
-    {
-      icon: Users,
-      label: "Customers",
-      view: "customers",
-      path: "/customers",
-    },
-    {
-      icon: BarChart2,
-      label: "Analytics",
-      view: "analytics",
-      path: "/analytics",
-    },
-    {
-      icon: Settings,
-      label: "Settings",
-      view: "settings",
-      path: "/settings",
-    },
-    {
-      icon: HelpCircle,
-      label: "Help Center",
-      view: "help",
-      path: "/help",
-    },
-  ];
+    // Add admin-specific items
+    if (role === 'admin') {
+      return [
+        ...baseItems,
+        {
+          icon: Users,
+          label: "Customers",
+          view: "customers",
+          path: `/${role}/dashboard/customers`,
+        },
+        {
+          icon: BarChart2,
+          label: "Analytics",
+          view: "analytics",
+          path: `/${role}/dashboard/analytics`,
+        },
+      ];
+    }
+
+    return baseItems;
+  };
+
+  const navItems = getNavItems(userRole);
 
   const handleNavigation = (item: typeof navItems[0]) => {
     onNavigate(item.view);

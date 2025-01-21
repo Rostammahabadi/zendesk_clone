@@ -9,6 +9,7 @@ import { AnalyticsDashboard } from '../components/analytics/AnalyticsDashboard';
 import { SettingsPage } from '../components/settings/SettingsPage';
 import { HelpCenter } from '../components/help/HelpCenter';
 import { DashboardLayout } from '../components/layouts/DashboardLayout';
+import { TicketDetail } from '../components/tickets/TicketDetail';
 
 export const router = createBrowserRouter([
   {
@@ -33,7 +34,16 @@ export const router = createBrowserRouter([
           },
           {
             path: 'tickets',
-            element: <TicketList />,
+            children: [
+              {
+                index: true,
+                element: <TicketList />,
+              },
+              {
+                path: ':ticketId',
+                element: <TicketDetail />,
+              }
+            ]
           },
           {
             path: 'customers',

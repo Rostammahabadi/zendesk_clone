@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { X, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
+import { toast } from "sonner";
+
 interface NewTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
 const users = [
   {
     id: 1,
@@ -24,8 +28,10 @@ const users = [
     avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
   },
 ];
+
 const statusOptions = ["Open", "Pending", "In Progress", "Resolved"];
 const priorityOptions = ["Low", "Medium", "High", "Urgent"];
+
 export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -36,6 +42,8 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
     assignee: null as number | null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
     if (step === 1) {
@@ -46,26 +54,62 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
         newErrors.description = "Description is required";
       }
     }
-    if (step === 2) {
-      if (!formData.assignee) {
-        newErrors.assignee = "Please select an assignee";
-      }
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
   const handleNext = () => {
     if (validateStep()) {
       setStep(step + 1);
     }
   };
-  const handleSubmit = () => {
+
+  const handleSubmit = async () => {
     if (validateStep()) {
-      // Handle ticket creation here
-      console.log("Submit ticket:", formData);
-      onClose();
+      try {
+        setIsLoading(true);
+        
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("No user found");
+
+        // Get user's profile to get company_id
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('company_id, id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        if (!profile) throw new Error("Profile not found");
+
+        // Create the ticket
+        const { error: ticketError } = await supabase
+          .from('tickets')
+          .insert({
+            subject: formData.subject,
+            description: formData.description,
+            status: formData.status.toLowerCase(),
+            priority: formData.priority.toLowerCase(),
+            assigned_to: formData.assignee || null,
+            created_by: profile.id,
+            company_id: profile.company_id,
+          })
+
+        if (ticketError) throw ticketError;
+
+        toast.success("Ticket created successfully!");
+        onClose();
+      } catch (error: any) {
+        console.error('Error creating ticket:', error);
+        toast.error(error.message || "Failed to create ticket");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">

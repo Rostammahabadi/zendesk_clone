@@ -1,26 +1,36 @@
+import { useState, useEffect } from "react";
 import { Clock, Tag } from "lucide-react";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../hooks/useAuth";
+import { NewTicketModal } from "./NewTicketModal";
+import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 
+interface Profile {
+  id: string;
+  full_name: string;
+}
+
 interface Ticket {
-  id: number;
+  id: string;
   subject: string;
-  customer: string;
-  status: string;
-  priority: string;
+  status: 'open' | 'pending' | 'closed';
+  priority: 'low' | 'medium' | 'high';
   created_at: string;
   updated_at: string;
+  created_by: Profile;
+  assigned_to: Profile | null;
+  description: string;
 }
 
 export function TicketList() {
+  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
-  const { role } = useParams();
   const navigate = useNavigate();
+  const { role } = useParams();
+
   useEffect(() => {
     if (!user?.id) return;
     
@@ -36,15 +46,26 @@ export function TicketList() {
           .select(`
             id,
             subject,
+            description,
             status,
             priority,
             created_at,
-            updated_at
+            updated_at,
+            created_by:profiles!tickets_created_by_fkey (
+              id,
+              first_name,
+              last_name
+            ),
+            assigned_to:profiles!tickets_assigned_to_fkey (
+              id,
+              first_name,
+              last_name
+            )
           `);
 
         // If user is a customer, only show their tickets
         if (userRole === 'customer') {
-          query = query.eq('customer_id', user?.id);
+          query = query.eq('created_by', user.id);
         }
 
         const { data, error } = await query
@@ -53,13 +74,15 @@ export function TicketList() {
         if (error) throw error;
 
         const formattedTickets = data.map(ticket => ({
-          id: ticket.id,
-          subject: ticket.subject,
-          customer: ticket.profiles?.[0]?.full_name || 'Unknown Customer',
-          status: ticket.status,
-          priority: ticket.priority,
-          created_at: ticket.created_at,
-          updated_at: ticket.updated_at
+          ...ticket,
+          created_by: {
+            ...ticket.created_by,
+            full_name: `${ticket.created_by.first_name} ${ticket.created_by.last_name}`.trim()
+          },
+          assigned_to: ticket.assigned_to ? {
+            ...ticket.assigned_to,
+            full_name: `${ticket.assigned_to.first_name} ${ticket.assigned_to.last_name}`.trim()
+          } : null
         }));
 
         setTickets(formattedTickets);
@@ -73,6 +96,10 @@ export function TicketList() {
 
     fetchTickets();
   }, [user?.id]);
+
+  const handleTicketClick = (ticketId: string) => {
+    navigate(`/${role}/dashboard/tickets/${ticketId}`);
+  };
 
   const getTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -97,16 +124,15 @@ export function TicketList() {
     return Math.floor(seconds) + 's ago';
   };
 
-  const handleTicketClick = (ticketId: string) => {
-    navigate(`/${role}/dashboard/tickets/${ticketId}`);
-  };
-
   return (
     <div className="flex-1 overflow-auto">
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">All tickets</h2>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          <button
+            onClick={() => setIsNewTicketModalOpen(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
             New Ticket
           </button>
         </div>
@@ -124,32 +150,35 @@ export function TicketList() {
             {tickets.map((ticket) => (
               <div
                 key={ticket.id}
+                onClick={() => handleTicketClick(ticket.id)}
                 className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
-                onClick={() => handleTicketClick(ticket.id.toString())}
-                >
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-medium">{ticket.subject}</h3>
-                    <p className="text-sm text-gray-600">{ticket.customer}</p>
+                    <p className="text-sm text-gray-600">
+                      {ticket.created_by.full_name}
+                      {ticket.assigned_to && ` • Assigned to ${ticket.assigned_to.full_name}`}
+                    </p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.status === "Open" ? "bg-green-100 text-green-800" 
-                        : ticket.status === "Pending" ? "bg-yellow-100 text-yellow-800" 
+                        ticket.status === "open" ? "bg-green-100 text-green-800" 
+                        : ticket.status === "pending" ? "bg-yellow-100 text-yellow-800" 
                         : "bg-blue-100 text-blue-800"
                       }`}
                     >
-                      {ticket.status}
+                      {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
                     </span>
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.priority === "High" ? "bg-red-100 text-red-800"
-                        : ticket.priority === "Medium" ? "bg-orange-100 text-orange-800"
+                        ticket.priority === "high" ? "bg-red-100 text-red-800"
+                        : ticket.priority === "medium" ? "bg-orange-100 text-orange-800"
                         : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {ticket.priority}
+                      {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                     </span>
                   </div>
                 </div>
@@ -167,6 +196,10 @@ export function TicketList() {
             ))}
           </div>
         )}
+        <NewTicketModal
+          isOpen={isNewTicketModalOpen}
+          onClose={() => setIsNewTicketModalOpen(false)}
+        />
       </div>
     </div>
   );

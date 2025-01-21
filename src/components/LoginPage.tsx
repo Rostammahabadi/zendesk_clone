@@ -165,13 +165,20 @@ export const LoginPage = () => {
 
         // If company exists and user profile exists, they're already set up
         if (existingCompany && userProfile) {
+          // Update user metadata with their role
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { role: userProfile.role.toLowerCase() }
+          })
+          
+          if (updateError) throw updateError
+          
           navigate(`/${userProfile.role.toLowerCase()}/dashboard`)
           return
         }
 
         // If company exists but no profile, create profile and auto-join
         if (existingCompany && !userProfile) {
-          const { error: createProfileError } = await supabase
+          const { data: newProfile, error: createProfileError } = await supabase
             .from('profiles')
             .insert({
               user_id: user.id,
@@ -179,8 +186,18 @@ export const LoginPage = () => {
               role: 'agent',
               is_active: true
             })
+            .select()
+            .single()
 
           if (createProfileError) throw createProfileError
+
+          // Update user metadata with their role
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: { role: 'agent' }
+          })
+          
+          if (updateError) throw updateError
+
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
           navigate('/agent/dashboard')
           return
