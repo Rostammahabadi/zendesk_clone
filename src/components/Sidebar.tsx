@@ -107,9 +107,9 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-[#1D364D] font-bold text-xl">Z</span>
+              <span className="text-[#1D364D] font-bold text-xl">A</span>
             </div>
-            <span className="font-semibold text-lg">Zendesk Clone</span>
+            <span className="font-semibold text-lg">Assistly</span>
           </div>
         </div>
         <div className="flex-1 py-4">

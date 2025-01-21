@@ -3,25 +3,13 @@ import { X, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
+import { ticketService } from "../../services/ticketService";
+import { TicketStatus, TicketPriority, TicketTopic, TicketType } from "../../types/ticket";
 
 interface NewTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-interface User {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: 'admin' | 'agent' | 'customer';
-  company_id: string;
-}
-
-type TicketStatus = 'open' | 'pending' | 'closed';
-type TicketPriority = 'low' | 'medium' | 'high';
-type TicketTopic = 'support' | 'billing' | 'technical';
-type TicketType = 'question' | 'problem' | 'feature_request';
 
 const statusOptions: TicketStatus[] = ['open', 'pending', 'closed'];
 const priorityOptions: TicketPriority[] = ['low', 'medium', 'high'];
@@ -42,14 +30,13 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [agents, setAgents] = useState<User[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
 
-  // Fetch agents when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user?.id) {
       fetchAgents();
     }
-  }, [isOpen]);
+  }, [isOpen, user?.id]);
 
   const fetchAgents = async () => {
     try {
@@ -60,13 +47,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
         .single();
 
       if (currentUser) {
-        const { data: agentsData, error } = await supabase
-          .from('users')
-          .select('id, first_name, last_name')
-          .eq('company_id', currentUser.company_id)
-          .in('role', ['agent', 'admin']);
-
-        if (error) throw error;
+        const agentsData = await ticketService.fetchAgents(currentUser.company_id);
         setAgents(agentsData || []);
       }
     } catch (error) {
@@ -99,33 +80,19 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
     if (validateStep()) {
       try {
         setIsLoading(true);
-        
-        // Get current user's data
-        const { data: currentUser, error: userError } = await supabase
+        const { data: currentUser } = await supabase
           .from('users')
-          .select('id, company_id')
+          .select('company_id')
           .eq('id', user?.id)
           .single();
 
-        if (userError) throw userError;
         if (!currentUser) throw new Error("User not found");
 
-        // Create the ticket
-        const { error: ticketError } = await supabase
-          .from('tickets')
-          .insert({
-            subject: formData.subject,
-            description: formData.description,
-            status: formData.status,
-            priority: formData.priority,
-            topic: formData.topic,
-            type: formData.type,
-            assigned_to: formData.assigned_to,
-            created_by: currentUser.id,
-            company_id: currentUser.company_id,
-          });
-
-        if (ticketError) throw ticketError;
+        await ticketService.createTicket({
+          ...formData,
+          created_by: user?.id,
+          company_id: currentUser.company_id,
+        });
 
         toast.success("Ticket created successfully!");
         onClose();

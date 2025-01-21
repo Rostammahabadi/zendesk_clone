@@ -1,27 +1,11 @@
 import { useState, useEffect } from "react";
 import { Clock, Tag } from "lucide-react";
 import { NewTicketModal } from "./NewTicketModal";
-import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
-
-interface Profile {
-  id: string;
-  full_name: string;
-}
-
-interface Ticket {
-  id: string;
-  subject: string;
-  status: 'open' | 'pending' | 'closed';
-  priority: 'low' | 'medium' | 'high';
-  created_at: string;
-  updated_at: string;
-  created_by: Profile;
-  assigned_to: Profile | null;
-  description: string;
-}
+import { ticketService } from "../../services/ticketService";
+import { Ticket } from "../../types/ticket";
 
 export function TicketList() {
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
@@ -37,55 +21,9 @@ export function TicketList() {
     const fetchTickets = async () => {
       try {
         setIsLoading(true);
-        
-        // Get user's role from metadata
         const userRole = user.user_metadata?.role;
-        
-        let query = supabase
-          .from('tickets')
-          .select(`
-            id,
-            subject,
-            description,
-            status,
-            priority,
-            created_at,
-            updated_at,
-            created_by:profiles!tickets_created_by_fkey (
-              id,
-              first_name,
-              last_name
-            ),
-            assigned_to:profiles!tickets_assigned_to_fkey (
-              id,
-              first_name,
-              last_name
-            )
-          `);
-
-        // If user is a customer, only show their tickets
-        if (userRole === 'customer') {
-          query = query.eq('created_by', user.id);
-        }
-
-        const { data, error } = await query
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const formattedTickets = data.map(ticket => ({
-          ...ticket,
-          created_by: {
-            ...ticket.created_by,
-            full_name: `${ticket.created_by.first_name} ${ticket.created_by.last_name}`.trim()
-          },
-          assigned_to: ticket.assigned_to ? {
-            ...ticket.assigned_to,
-            full_name: `${ticket.assigned_to.first_name} ${ticket.assigned_to.last_name}`.trim()
-          } : null
-        }));
-
-        setTickets(formattedTickets);
+        const ticketsData = await ticketService.fetchTickets(user.id, userRole);
+        setTickets(ticketsData);
       } catch (error) {
         console.error('Error fetching tickets:', error);
         toast.error('Failed to load tickets. Please try again.');

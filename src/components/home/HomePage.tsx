@@ -88,6 +88,9 @@ export function HomePage() {
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const { user } = useAuth();
 
+  // If user is not logged in, you might want to redirect or show a loading state
+  if (!user) return null;
+
   // If user is admin, render AdminHomePage
   if (user.user_metadata.role === 'admin') {
     return <AdminHomePage />;

@@ -10,23 +10,9 @@ import {
 import { useState, useEffect } from "react";
 import { NewTicketModal } from "../tickets/NewTicketModal";
 import { NewCustomerModal } from "../signup/NewCustomerModal";
-import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
-
-interface Agent {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  company_id: string;
-  created_at: string;
-  updated_at: string;
-  status?: "Online" | "Busy" | "Away";
-  activeTickets?: number;
-  resolvedToday?: number;
-  responseTime?: string;
-}
+import { Agent } from "../../types/user";
+import { userService } from "../../services/userService";
 
 const teamMetrics = [
   {
@@ -65,21 +51,17 @@ export function AdminHomePage() {
     const fetchAgents = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('role', 'agent');
+        const agents = await userService.fetchAgents();
 
-        if (error) throw error;
 
         // Transform the data to include the UI-specific fields
-        const agentsWithStatus = data.map(agent => ({
+        const agentsWithStatus = agents.map(agent => ({
           ...agent,
           status: Math.random() > 0.5 ? "Online" : Math.random() > 0.5 ? "Busy" : "Away",
           activeTickets: Math.floor(Math.random() * 10),
           resolvedToday: Math.floor(Math.random() * 20),
           responseTime: `${Math.floor(Math.random() * 15 + 5)} min`,
-        }));
+        })) as Agent[];
 
         setAgents(agentsWithStatus);
       } catch (error) {
@@ -101,7 +83,7 @@ export function AdminHomePage() {
           <div className="max-w-3xl">
             <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
             <p className="text-gray-300">
-              Managing {agents.length} agents · 47 active tickets · 23 customers waiting
+              Managing {agents.length} agents · 0 active tickets · 0 customers waiting
             </p>
           </div>
         </div>

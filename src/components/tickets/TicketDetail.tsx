@@ -22,10 +22,11 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
+import { Ticket, TicketEvent, TicketMessage } from '../../types/ticket';
+import { ticketService } from '../../services/ticketService';
 
 interface User {
   id: string;
@@ -37,40 +38,6 @@ interface User {
   full_name?: string;
 }
 
-interface TicketComment {
-  id: string;
-  body: string;
-  created_at: string;
-  author: User;
-}
-
-interface TicketEvent {
-  id: string;
-  event_type: 'created' | 'updated_description' | 'comment_added' | 'assigned' | 'priority_changed' | 'topic_changed' | 'type_changed' | 'tags_added' | 'tags_removed' | 'closed' | 'reopened' | 'merged' | 'status_changed';
-  old_value: string | null;
-  new_value: string | null;
-  triggered_by: User | null;
-  created_at: string;
-}
-
-interface Ticket {
-  id: string;
-  subject: string;
-  description: string;
-  status: 'open' | 'pending' | 'closed';
-  priority: 'low' | 'medium' | 'high';
-  topic: 'support' | 'billing' | 'technical';
-  type: 'question' | 'problem' | 'feature_request';
-  created_at: string;
-  updated_at: string;
-  created_by: User;
-  assigned_to: User | null;
-  company_id: string;
-  comments: TicketComment[];
-  tags: { tag_id: string }[];
-  events: TicketEvent[];
-}
-
 const statusOptions = ['open', 'pending', 'closed'];
 const priorityOptions = ['low', 'medium', 'high'];
 const topicOptions = ['support', 'billing', 'technical'];
@@ -79,170 +46,33 @@ const typeOptions = ['question', 'problem', 'feature_request'];
 export function TicketDetail() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [publicMessages, setPublicMessages] = useState<TicketMessage[]>([]);
+  const [internalNotes, setInternalNotes] = useState<TicketMessage[]>([]);
+  const [events, setEvents] = useState<TicketEvent[]>([]);
   const { ticketId, role } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [showMacros, setShowMacros] = useState(false);
   const scrollableRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ticketId) return;
-
-    // Create a unique channel name per ticket
-    const channel = supabase.channel(`ticket-events-${ticketId}`);
-
-    // Listen for any inserts/updates/deletes in 'ticket_events' 
-    // where ticket_id = the current ticketId
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ticket_events',
-          filter: `ticket_id=eq.${ticketId}`
-        },
-        (payload) => {
-          console.log("Realtime event received:", payload);
-          setTicket((prevTicket) => {
-            if (!prevTicket) return null;
-            return {
-              ...prevTicket,
-              events: [...prevTicket.events, payload.new as TicketEvent]
-            };
-          });
-        }
-      )
-      .subscribe();
-
-    // Clean up the channel on unmount or when ticketId changes
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    
-  }, [ticketId]);
 
   useEffect(() => {
-    if (!scrollableRef.current) return;
-    const container = scrollableRef.current;
-    container.scrollTop = container.scrollHeight;
-  }, [ticket?.events]);
-
-  useEffect(() => {
-    const fetchTicket = async () => {
+    const fetchTicketData = async () => {
+      if (!ticketId) return;
+      
       try {
         setIsLoading(true);
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select(`
-            id,
-            subject,
-            description,
-            status,
-            priority,
-            topic,
-            type,
-            created_at,
-            updated_at,
-            company_id,
-            created_by:users!tickets_created_by_users_id_fk (
-              id,
-              email,
-              first_name,
-              last_name,
-              role,
-              company_id
-            ),
-            assigned_to:users!tickets_assigned_to_users_id_fk (
-              id,
-              email,
-              first_name,
-              last_name,
-              role,
-              company_id
-            ),
-            ticket_tags (
-              tag_id
-            )
-          `)
-          .eq('id', ticketId)
-          .single();
+        const [ticketData, eventsData, messagesData] = await Promise.all([
+          ticketService.fetchTicket(ticketId),
+          ticketService.fetchTicketEvents(ticketId),
+          ticketService.fetchTicketMessages(ticketId)
+        ]);
 
-        if (ticketError) throw ticketError;
-
-        // Fetch comments for the ticket
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('ticket_messages')
-          .select(`
-            id,
-            body,
-            created_at,
-            author:sender_id (
-              id,
-              email,
-              first_name,
-              last_name,
-              role,
-              company_id
-            )
-          `)
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: true });
-
-        if (commentsError) throw commentsError;
-
-        // Fetch events for the ticket
-        const { data: eventsData, error: eventsError } = await supabase
-          .from('ticket_events')
-          .select(`
-            id,
-            event_type,
-            old_value,
-            new_value,
-            created_at,
-            triggered_by:users!ticket_events_triggered_by_users_id_fk (
-              id,
-              email,
-              first_name,
-              last_name,
-              role,
-              company_id
-            )
-          `)
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: true });
-
-        if (eventsError) throw eventsError;
-
-        // Format the ticket data with full names
-        const formattedTicket: Ticket = {
-          ...ticketData,
-          created_by: {
-            ...ticketData.created_by,
-            full_name: `${ticketData.created_by?.first_name || ''} ${ticketData.created_by?.last_name || ''}`.trim()
-          },
-          assigned_to: ticketData.assigned_to ? {
-            ...ticketData.assigned_to,
-            full_name: `${ticketData.assigned_to.first_name || ''} ${ticketData.assigned_to.last_name || ''}`.trim()
-          } : null,
-          comments: commentsData.map(comment => ({
-            ...comment,
-            author: {
-              ...comment.author,
-              full_name: `${comment.author?.first_name || ''} ${comment.author?.last_name || ''}`.trim()
-            }
-          })),
-          events: eventsData.map(event => ({
-            ...event,
-            triggered_by: event.triggered_by ? {
-              ...event.triggered_by,
-              full_name: `${event.triggered_by.first_name || ''} ${event.triggered_by.last_name || ''}`.trim()
-            } : null
-          })),
-          tags: ticketData.ticket_tags.map(tag => ({ tag_id: tag.tag_id }))
-        };
-
-        setTicket(formattedTicket);
+        setTicket({ ...ticketData, events: eventsData });
+        setEvents(eventsData);
+        setPublicMessages(messagesData.filter(msg => msg.message_type === 'public'));
+        setInternalNotes(messagesData.filter(msg => msg.message_type === 'internal_note'));
       } catch (error) {
         console.error('Error fetching ticket:', error);
         toast.error('Failed to load ticket details');
@@ -252,10 +82,14 @@ export function TicketDetail() {
       }
     };
 
-    if (ticketId) {
-      fetchTicket();
-    }
+    fetchTicketData();
   }, [ticketId, role]);
+
+  useEffect(() => {
+    if (!scrollableRef.current) return;
+    const container = scrollableRef.current;
+    container.scrollTop = container.scrollHeight;
+  }, [ticket?.events]);
 
   const handleBack = () => {
     navigate(`/${role}/dashboard/tickets`);
@@ -265,13 +99,7 @@ export function TicketDetail() {
     if (!ticket) return;
 
     try {
-      const { error } = await supabase
-        .from('tickets')
-        .update({ [field]: value })
-        .eq('id', ticket.id);
-
-      if (error) throw error;
-
+      await ticketService.updateTicketField(ticket.id, field, value);
       setTicket(prev => prev ? { ...prev, [field]: value } : null);
       toast.success(`Updated ${field} successfully`);
     } catch (error) {
@@ -284,29 +112,29 @@ export function TicketDetail() {
     if (!message.trim() || !ticket || !user) return;
 
     try {
-      const { error } = await supabase
-        .from('ticket_comments')
-        .insert({
-          ticket_id: ticket.id,
-          message: message.trim(),
-          author_id: user.id,
-          company_id: ticket.company_id
-        });
-
-      if (error) throw error;
-
+      await ticketService.addTicketMessage(ticket.id, user.id, message, 'public');
       toast.success('Comment added successfully');
       setMessage('');
-      // Refresh ticket data
-      window.location.reload();
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
     }
   };
 
+  const handleAddInternalNote = async () => {
+    if (!internalNote.trim() || !ticket || !user) return;
+
+    try {
+      await ticketService.addTicketMessage(ticket.id, user.id, internalNote, 'internal_note');
+      toast.success('Internal note added successfully');
+      setInternalNote('');
+    } catch (error) {
+      console.error('Error adding internal note:', error);
+      toast.error('Failed to add internal note');
+    }
+  };
+
   const getEventDescription = (event: TicketEvent) => {
-    console.log(event)
     switch (event.event_type) {
       case 'created':
         return 'Ticket created';
@@ -477,24 +305,24 @@ export function TicketDetail() {
           {/* Messages Thread */}
           <div className="flex-1 flex flex-col">
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              {ticket.comments.map(comment => (
-                <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
+              {publicMessages.map(message => (
+                <div key={message.id} className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                        {comment.author?.full_name?.[0] || '?'}
+                        {message.sender?.full_name?.[0] || '?'}
                       </div>
                       <div>
-                        <div className="font-medium">{comment.author?.full_name || 'Unknown User'}</div>
+                        <div className="font-medium">{message.sender?.full_name || 'Unknown User'}</div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {new Date(comment.created_at).toLocaleString()}
+                          {new Date(message.created_at).toLocaleString()}
                         </div>
                       </div>
                     </div>
                   </div>
                   <p className="text-gray-700">
-                    {comment.body}
+                    {message.body}
                   </p>
                 </div>
               ))}
@@ -586,18 +414,47 @@ export function TicketDetail() {
               <h3 className="font-medium mb-4">Internal Notes</h3>
               <div className="space-y-4">
                 <textarea
+                  value={internalNote}
+                  onChange={(e) => setInternalNote(e.target.value)}
                   placeholder="Add an internal note..."
                   className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   rows={4}
                 />
-                <button className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <button 
+                  onClick={handleAddInternalNote}
+                  disabled={!internalNote.trim()}
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Add Note
                 </button>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {internalNotes.map((note) => (
+                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <img
+                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${note.sender.email}`}
+                          alt={note.sender.full_name}
+                          className="w-6 h-6 rounded-full"
+                        />
+                        <span className="font-medium text-sm">
+                          {note.sender.full_name}
+                        </span>
+                        <span className="text-gray-500 text-sm">·</span>
+                        <span className="text-gray-500 text-sm">
+                          {new Date(note.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {note.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="mt-6">
                 <h3 className="font-medium mb-4">Activity History</h3>
                 <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" ref={scrollableRef}>
-                  {ticket?.events.map((event) => (
+                  {events.map((event) => (
                     <div key={event.id} className="text-sm">
                       <div className="flex items-center text-gray-500">
                         <History className="w-4 h-4 mr-1 flex-shrink-0" />
@@ -606,7 +463,7 @@ export function TicketDetail() {
                       <p>
                         {getEventDescription(event)}
                         {event.triggered_by && (
-                          <span className="text-gray-500"> by {event.triggered_by.full_name}</span>
+                          <span className="text-gray-500"> by {event.triggered_by.first_name} {event.triggered_by.last_name}</span>
                         )}
                       </p>
                     </div>

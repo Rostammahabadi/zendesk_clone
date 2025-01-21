@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner";
 import {
   User,
@@ -13,136 +11,35 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import { Ticket, User as UserType, TicketMessage } from '../../types/ticket';
+import { ticketService } from '../../services/ticketService';
 
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  full_name?: string;
-}
-
-interface TicketComment {
-  id: string;
-  message: string;
-  is_internal: boolean;
-  created_at: string;
-  author: Profile;
-}
-
-interface Ticket {
-  id: string;
-  subject: string;
-  description: string;
-  status: 'open' | 'pending' | 'closed';
-  priority: 'low' | 'medium' | 'high';
-  topic: 'support' | 'billing' | 'technical';
-  type: 'question' | 'problem' | 'feature_request';
-  created_at: string;
-  updated_at: string;
-  created_by: Profile;
-  assigned_to: Profile | null;
-  company_id: string;
-  comments: TicketComment[];
-}
-
-const statusOptions = ['open', 'pending', 'closed'];
-const priorityOptions = ['low', 'medium', 'high'];
-const topicOptions = ['support', 'billing', 'technical'];
-const typeOptions = ['question', 'problem', 'feature_request'];
+const statusOptions = ['open', 'pending', 'closed'] as const;
+const priorityOptions = ['low', 'medium', 'high'] as const;
+const topicOptions = ['support', 'billing', 'technical'] as const;
+const typeOptions = ['question', 'problem', 'feature_request'] as const;
 
 export function EditTicketList() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [agents, setAgents] = useState<Profile[]>([]);
+  const [agents, setAgents] = useState<UserType[]>([]);
+  const [messages, setMessages] = useState<TicketMessage[]>([]);
   const { ticketId, role } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   useEffect(() => {
     const fetchTicketAndAgents = async () => {
+      if (!ticketId) return;
+      
       try {
         setIsLoading(true);
-        // Fetch ticket with all related data
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select(`
-            id,
-            subject,
-            description,
-            status,
-            priority,
-            topic,
-            type,
-            tags,
-            created_at,
-            updated_at,
-            company_id,
-            created_by:profiles!tickets_created_by_fkey (
-              id,
-              first_name,
-              last_name
-            ),
-            assigned_to:profiles!tickets_assigned_to_fkey (
-              id,
-              first_name,
-              last_name
-            )
-          `)
-          .eq('id', ticketId)
-          .single();
+        const ticketData = await ticketService.fetchTicket(ticketId);
+        const agentsData = await ticketService.fetchAgents(ticketData.company_id);
+        const messagesData = await ticketService.fetchTicketMessages(ticketId);
 
-        if (ticketError) throw ticketError;
-
-        // Fetch comments for the ticket
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('ticket_comments')
-          .select(`
-            id,
-            message,
-            is_internal,
-            created_at,
-            author:profiles!ticket_comments_author_id_profiles_id_fk (
-              id,
-              first_name,
-              last_name
-            )
-          `)
-          .eq('ticket_id', ticketId)
-          .order('created_at', { ascending: true });
-
-        if (commentsError) throw commentsError;
-
-        // Fetch available agents
-        const { data: agentsData, error: agentsError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .eq('company_id', ticketData.company_id)
-          .in('role', ['agent', 'admin']);
-
-        if (agentsError) throw agentsError;
-
-        // Format the ticket data with full names
-        const formattedTicket = {
-          ...ticketData,
-          created_by: {
-            ...ticketData.created_by,
-            full_name: `${ticketData.created_by.first_name} ${ticketData.created_by.last_name}`.trim()
-          },
-          assigned_to: ticketData.assigned_to ? {
-            ...ticketData.assigned_to,
-            full_name: `${ticketData.assigned_to.first_name} ${ticketData.assigned_to.last_name}`.trim()
-          } : null,
-          comments: commentsData.map(comment => ({
-            ...comment,
-            author: {
-              ...comment.author,
-              full_name: `${comment.author.first_name} ${comment.author.last_name}`.trim()
-            }
-          }))
-        };
-
-        setTicket(formattedTicket);
-        setAgents(agentsData || []);
+        setTicket(ticketData);
+        setAgents(agentsData);
+        setMessages(messagesData);
       } catch (error) {
         console.error('Error fetching ticket:', error);
         toast.error('Failed to load ticket details');
@@ -152,10 +49,8 @@ export function EditTicketList() {
       }
     };
 
-    if (ticketId) {
-      fetchTicketAndAgents();
-    }
-  }, [ticketId, role, navigate]);
+    fetchTicketAndAgents();
+  }, [ticketId, role]);
 
   const handleBack = () => {
     navigate(`/${role}/dashboard/tickets`);
@@ -165,13 +60,7 @@ export function EditTicketList() {
     if (!ticket) return;
 
     try {
-      const { error } = await supabase
-        .from('tickets')
-        .update({ [field]: value })
-        .eq('id', ticket.id);
-
-      if (error) throw error;
-
+      await ticketService.updateTicketField(ticket.id, field, value);
       setTicket(prev => prev ? { ...prev, [field]: value } : null);
       toast.success(`Updated ${field} successfully`);
     } catch (error) {
@@ -351,32 +240,32 @@ export function EditTicketList() {
           <div className="mt-6">
             <h3 className="font-medium mb-4">Comments</h3>
             <div className="space-y-4">
-              {ticket.comments.map((comment) => (
+              {messages.map((message) => (
                 <div
-                  key={comment.id}
+                  key={message.id}
                   className={`p-4 rounded-lg ${
-                    comment.is_internal ? 'bg-yellow-50' : 'bg-white'
+                    message.message_type === 'internal_note' ? 'bg-yellow-50' : 'bg-white'
                   } shadow`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                        {comment.author.first_name[0]}
+                        {message.sender.first_name?.[0]}
                       </div>
                       <div>
-                        <div className="font-medium">{comment.author.full_name}</div>
+                        <div className="font-medium">{message.sender.full_name}</div>
                         <div className="text-sm text-gray-500">
-                          {getTimeAgo(comment.created_at)}
+                          {getTimeAgo(message.created_at)}
                         </div>
                       </div>
                     </div>
-                    {comment.is_internal && (
+                    {message.message_type === 'internal_note' && (
                       <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
                         Internal Note
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-600 whitespace-pre-wrap">{comment.message}</p>
+                  <p className="text-gray-600 whitespace-pre-wrap">{message.body}</p>
                 </div>
               ))}
             </div>
