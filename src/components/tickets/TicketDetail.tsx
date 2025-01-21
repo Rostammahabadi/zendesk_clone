@@ -20,7 +20,7 @@ import {
   Send,
   History,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
@@ -84,6 +84,49 @@ export function TicketDetail() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [showMacros, setShowMacros] = useState(false);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ticketId) return;
+
+    // Create a unique channel name per ticket
+    const channel = supabase.channel(`ticket-events-${ticketId}`);
+
+    // Listen for any inserts/updates/deletes in 'ticket_events' 
+    // where ticket_id = the current ticketId
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ticket_events',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        (payload) => {
+          console.log("Realtime event received:", payload);
+          setTicket((prevTicket) => {
+            if (!prevTicket) return null;
+            return {
+              ...prevTicket,
+              events: [...prevTicket.events, payload.new as TicketEvent]
+            };
+          });
+        }
+      )
+      .subscribe();
+
+    // Clean up the channel on unmount or when ticketId changes
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    
+  }, [ticketId]);
+
+  useEffect(() => {
+    if (!scrollableRef.current) return;
+    const container = scrollableRef.current;
+    container.scrollTop = container.scrollHeight;
+  }, [ticket?.events]);
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -553,11 +596,11 @@ export function TicketDetail() {
               </div>
               <div className="mt-6">
                 <h3 className="font-medium mb-4">Activity History</h3>
-                <div className="space-y-3">
+                <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" ref={scrollableRef}>
                   {ticket?.events.map((event) => (
                     <div key={event.id} className="text-sm">
                       <div className="flex items-center text-gray-500">
-                        <History className="w-4 h-4 mr-1" />
+                        <History className="w-4 h-4 mr-1 flex-shrink-0" />
                         <span>{new Date(event.created_at).toLocaleString()}</span>
                       </div>
                       <p>
