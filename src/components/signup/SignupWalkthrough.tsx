@@ -158,8 +158,38 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         setIsLoading(false);
       }
     } else {
-      toast.success("Setup completed!");
-      onOpenChange(false);
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("No user found");
+
+        // Get user's role from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        if (!profile) throw new Error("Profile not found");
+
+        // Update walkthrough completion status
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ 
+            has_completed_walkthrough: true,
+            current_step: 3,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userProfile.id);
+
+        if (error) throw error;
+        toast.success("Setup completed!");
+        onOpenChange(false);
+      } catch (error: any) {
+        console.error('Error completing walkthrough:', error);
+        toast.error(error.message || "Failed to complete setup");
+      }
     }
   };
 

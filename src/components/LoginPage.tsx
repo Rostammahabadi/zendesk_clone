@@ -4,7 +4,6 @@ import { getEmailError } from '../utils/emailValidation'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { SignupWalkthrough } from './signup/SignupWalkthrough'
 import { toast } from 'sonner'
-import { userProfiles } from '../db/schema'
 
 interface AuthError {
   message: string
@@ -152,10 +151,11 @@ export const LoginPage = () => {
         if (companyError && companyError.code !== 'PGRST116') {
           throw companyError
         }
+
         // Check if user profile exists
         const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
-          .select('id, company_id')
+          .select('id, company_id, role')
           .eq('user_id', user.id)
           .single()
 
@@ -165,7 +165,7 @@ export const LoginPage = () => {
 
         // If company exists and user profile exists, they're already set up
         if (existingCompany && userProfile) {
-          navigate('/')
+          navigate(`/${userProfile.role.toLowerCase()}/dashboard`)
           return
         }
 
@@ -182,10 +182,11 @@ export const LoginPage = () => {
 
           if (createProfileError) throw createProfileError
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
-          navigate('/')
+          navigate('/agent/dashboard')
           return
         }
-        // If the company doesn't exist, create a user profile
+
+        // If no company exists, create a user profile for walkthrough
         const { data: createdUserProfile, error: createdUserProfileError } = await supabase
           .from('user_profiles')
           .insert({
@@ -193,6 +194,7 @@ export const LoginPage = () => {
             has_completed_walkthrough: false,
             current_step: 1,
           })
+          .select()
           .single()
 
         if (createdUserProfileError) throw createdUserProfileError
@@ -244,8 +246,8 @@ export const LoginPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('No session found')
-        debugger;
-      // Update or create user profile with walkthrough completion
+
+      // Update user profile with walkthrough completion
       const { error: upsertError } = await supabase
         .from('user_profiles')
         .upsert({
@@ -255,11 +257,23 @@ export const LoginPage = () => {
         })
 
       if (upsertError) throw upsertError
-      navigate('/')
+
+      // Get user's role from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (profileError) throw profileError
+      if (!profile) throw new Error('Profile not found')
+
+      // Navigate to role-specific dashboard
+      navigate(`/${profile.role.toLowerCase()}/dashboard`)
     } catch (error) {
       console.error('Error updating walkthrough status:', error)
-      // Navigate anyway to not block the user
-      navigate('/')
+      // Navigate to default dashboard if role fetch fails
+      navigate('/dashboard')
     }
   }
 

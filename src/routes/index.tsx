@@ -24,6 +24,7 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
+        path: ':role/dashboard',
         element: <DashboardLayout />,
         children: [
           {
@@ -50,11 +51,11 @@ export const router = createBrowserRouter([
             path: 'help',
             element: <HelpCenter />,
           },
-          {
-            path: '*',
-            element: <Navigate to="/" replace />,
-          },
         ],
+      },
+      {
+        path: '*',
+        element: <Navigate to="/login" replace />,
       },
     ],
   },

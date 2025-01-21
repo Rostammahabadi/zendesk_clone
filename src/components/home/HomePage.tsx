@@ -8,21 +8,27 @@ import {
   ArrowRight,
   Bell,
 } from "lucide-react";
+import { useState } from "react";
+import { NewTicketModal } from "../tickets/NewTicketModal";
+
 const quickActions = [
   {
     icon: Plus,
     label: "New Ticket",
     color: "bg-blue-500",
+    action: "newTicket"
   },
   {
     icon: Users,
     label: "Add Customer",
     color: "bg-green-500",
+    action: "addCustomer"
   },
   {
     icon: MessageSquare,
     label: "Send Message",
     color: "bg-purple-500",
+    action: "sendMessage"
   },
 ];
 const recentActivity = [
@@ -77,6 +83,17 @@ const taskSummary = [
   },
 ];
 export function HomePage() {
+  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case "newTicket":
+        setIsNewTicketModalOpen(true);
+        break;
+      // Add other cases as needed
+    }
+  };
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6">
@@ -102,6 +119,7 @@ export function HomePage() {
           {quickActions.map((action) => (
             <button
               key={action.label}
+              onClick={() => handleQuickAction(action.action)}
               className="flex items-center justify-between p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="flex items-center">
@@ -187,6 +205,11 @@ export function HomePage() {
           </div>
         </div>
       </div>
+
+      <NewTicketModal 
+        isOpen={isNewTicketModalOpen}
+        onClose={() => setIsNewTicketModalOpen(false)}
+      />
     </div>
   );
 }
