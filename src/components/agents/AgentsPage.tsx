@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAgents } from "../../hooks/queries/useAgents";
 export function AgentsPage() {
-  const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
+  const { data: agents = [] } = useAgents();
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
