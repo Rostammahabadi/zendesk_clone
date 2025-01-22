@@ -44,7 +44,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkUserDataForConsistency = () => {
+    if (localStorage.getItem('userData')) {
+      const storedUserData = JSON.parse(localStorage.getItem('userData') || '{}');
+      if (storedUserData.id !== user?.id) {
+        localStorage.removeItem('userData');
+        setUserData(null);
+        return false;
+      }
+
+      if (!storedUserData.id || !storedUserData.email || !storedUserData.first_name || !storedUserData.last_name || !storedUserData.role || !storedUserData.company_id) {
+        localStorage.removeItem('userData');
+        setUserData(null);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const fetchUserData = async (userId: string) => {
+    if (localStorage.getItem('userData')) {
+      if (!checkUserDataForConsistency()) {
+        return;
+      }
+      setUserData(JSON.parse(localStorage.getItem('userData') || '{}'));
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('users')
@@ -54,9 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       setUserData(data);
+      localStorage.setItem('userData', JSON.stringify(data));
     } catch (error) {
       console.error('Error fetching user data:', error);
       setUserData(null);
+      localStorage.removeItem('userData');
     } finally {
       setIsLoading(false);
     }

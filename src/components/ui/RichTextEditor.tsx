@@ -22,8 +22,8 @@ export function RichTextEditor({
   const [editorState, setEditorState] = useState(() => {
     if (initialContent) {
       try {
-        const contentState = convertFromRaw(JSON.parse(initialContent));
-        return EditorState.createWithContent(contentState);
+        const content = JSON.parse(initialContent);
+        return EditorState.createWithContent(convertFromRaw(content));
       } catch {
         return EditorState.createEmpty();
       }
@@ -31,17 +31,10 @@ export function RichTextEditor({
     return EditorState.createEmpty();
   });
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const content = JSON.stringify(convertToRaw(editorState.getCurrentContent()));
-      onChange(content);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [editorState, onChange]);
-
-  const handleEditorChange = (state: EditorState) => {
-    setEditorState(state);
+  const handleEditorChange = (newState: EditorState) => {
+    setEditorState(newState);
+    const content = JSON.stringify(convertToRaw(newState.getCurrentContent()));
+    onChange(content);
   };
 
   const focusEditor = () => {
@@ -59,98 +52,82 @@ export function RichTextEditor({
 
   const toggleInlineStyle = (e: React.MouseEvent, style: string) => {
     e.preventDefault();
-    const newState = RichUtils.toggleInlineStyle(editorState, style);
-    handleEditorChange(newState);
-    setTimeout(() => editorRef.current?.focus(), 0);
+    handleEditorChange(RichUtils.toggleInlineStyle(editorState, style));
+    focusEditor();
   };
 
   const toggleBlockType = (e: React.MouseEvent, blockType: string) => {
     e.preventDefault();
-    const newState = RichUtils.toggleBlockType(editorState, blockType);
-    handleEditorChange(newState);
-    setTimeout(() => editorRef.current?.focus(), 0);
+    handleEditorChange(RichUtils.toggleBlockType(editorState, blockType));
+    focusEditor();
   };
 
-  const ToolbarButton = ({ onClick, active, icon: Icon, title }: any) => (
+  const ToolbarButton = ({ onToggle, style, icon, label }: { onToggle: (e: React.MouseEvent) => void, style: string, icon: React.ReactNode, label: string }) => (
     <button
       type="button"
-      onMouseDown={onClick}
-      className={`p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
-        active ? 'bg-gray-100 dark:bg-gray-700' : ''
+      onMouseDown={(e) => onToggle(e)}
+      className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+        editorState.getCurrentInlineStyle().has(style) ? 'bg-gray-100 dark:bg-gray-700' : ''
       }`}
-      title={title}
+      title={label}
+      aria-label={label}
+      tabIndex={0}
     >
-      <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+      {icon}
     </button>
   );
 
   return (
-    <div 
-      className={`border rounded-lg dark:border-gray-700 ${className}`}
-      onClick={focusEditor}
-    >
+    <div className={`border rounded-lg overflow-hidden dark:border-gray-600 ${className}`}>
       {!readOnly && (
-        <div className="flex items-center gap-1 p-2 border-b dark:border-gray-700">
+        <div className="flex items-center gap-1 p-2 border-b dark:border-gray-600" role="toolbar" aria-label="Text formatting options">
           <ToolbarButton
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              toggleInlineStyle(e, 'BOLD');
-            }}
-            active={editorState.getCurrentInlineStyle().has('BOLD')}
-            icon={Bold}
-            title="Bold"
+            onToggle={(e) => toggleInlineStyle(e, 'BOLD')}
+            style="BOLD"
+            icon={<Bold className="h-4 w-4" />}
+            label="Bold"
           />
           <ToolbarButton
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              toggleInlineStyle(e, 'ITALIC');
-            }}
-            active={editorState.getCurrentInlineStyle().has('ITALIC')}
-            icon={Italic}
-            title="Italic"
+            onToggle={(e) => toggleInlineStyle(e, 'ITALIC')}
+            style="ITALIC"
+            icon={<Italic className="h-4 w-4" />}
+            label="Italic"
           />
           <ToolbarButton
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              toggleInlineStyle(e, 'UNDERLINE');
-            }}
-            active={editorState.getCurrentInlineStyle().has('UNDERLINE')}
-            icon={Underline}
-            title="Underline"
+            onToggle={(e) => toggleInlineStyle(e, 'UNDERLINE')}
+            style="UNDERLINE"
+            icon={<Underline className="h-4 w-4" />}
+            label="Underline"
           />
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" role="separator" />
           <ToolbarButton
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              toggleBlockType(e, 'unordered-list-item');
-            }}
-            active={
-              RichUtils.getCurrentBlockType(editorState) === 'unordered-list-item'
-            }
-            icon={List}
-            title="Bullet List"
+            onToggle={(e) => toggleBlockType(e, 'unordered-list-item')}
+            style="unordered-list-item"
+            icon={<List className="h-4 w-4" />}
+            label="Bullet List"
           />
           <ToolbarButton
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              toggleBlockType(e, 'ordered-list-item');
-            }}
-            active={
-              RichUtils.getCurrentBlockType(editorState) === 'ordered-list-item'
-            }
-            icon={ListOrdered}
-            title="Numbered List"
+            onToggle={(e) => toggleBlockType(e, 'ordered-list-item')}
+            style="ordered-list-item"
+            icon={<ListOrdered className="h-4 w-4" />}
+            label="Numbered List"
           />
         </div>
       )}
-      <div className="p-3 min-h-[100px] cursor-text">
+      <div 
+        className={`p-3 min-h-[100px] cursor-text ${readOnly ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}`}
+        onClick={focusEditor}
+        onFocus={focusEditor}
+        tabIndex={-1}
+      >
         <Editor
           ref={editorRef}
           editorState={editorState}
           onChange={handleEditorChange}
-          handleKeyCommand={handleKeyCommand}
           placeholder={placeholder}
           readOnly={readOnly}
+          handleKeyCommand={handleKeyCommand}
+          tabIndex={0}
         />
       </div>
     </div>

@@ -53,7 +53,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    debugger;
+
     try {
       await ticketService.createTicket({
         subject: formData.subject,
