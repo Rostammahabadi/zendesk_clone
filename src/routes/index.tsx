@@ -11,6 +11,7 @@ import { HelpCenter } from '../components/help/HelpCenter';
 import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { TicketDetail } from '../components/tickets/TicketDetail';
 import { TeamPage } from '../components/teams/TeamPage';
+import { AgentsPage } from '../components/agents/AgentsPage';
 
 export const router = createBrowserRouter([
   {
@@ -65,6 +66,10 @@ export const router = createBrowserRouter([
           {
             path: 'help',
             element: <HelpCenter />,
+          },
+          {
+            path: 'agents',
+            element: <AgentsPage />,
           },
         ],
       },

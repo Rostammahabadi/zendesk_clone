@@ -13,97 +13,10 @@ import {
 import { TeamUserGroup } from "../../types/team";
 import { NewTeamModal } from "./NewTeamModal";
 
-const teams = [
-  {
-    id: 1,
-    name: "Technical Support",
-    lead: {
-      name: "John Doe",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    },
-    metrics: {
-      activeTickets: 24,
-      avgResponseTime: "8m",
-      resolutionRate: "94%",
-    },
-    members: [
-      {
-        name: "John Doe",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-        role: "Team Lead",
-      },
-      {
-        name: "Sarah Wilson",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-        role: "Senior Agent",
-      },
-      {
-        name: "Mike Johnson",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
-        role: "Support Agent",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Billing Support",
-    lead: {
-      name: "Jane Smith",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-    },
-    metrics: {
-      activeTickets: 15,
-      avgResponseTime: "12m",
-      resolutionRate: "91%",
-    },
-    members: [
-      {
-        name: "Jane Smith",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-        role: "Team Lead",
-      },
-      {
-        name: "Alex Brown",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-        role: "Support Agent",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Customer Success",
-    lead: {
-      name: "Emily Chen",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
-    },
-    metrics: {
-      activeTickets: 18,
-      avgResponseTime: "10m",
-      resolutionRate: "96%",
-    },
-    members: [
-      {
-        name: "Emily Chen",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
-        role: "Team Lead",
-      },
-      {
-        name: "David Kim",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-        role: "Senior Agent",
-      },
-      {
-        name: "Lisa Wang",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa",
-        role: "Support Agent",
-      },
-    ],
-  },
-];
 
 export function TeamPage() {
   const { userData } = useAuth();
-  const [_,  setTeamUserGroups] = useState<TeamUserGroup[]>([]);
+  const [teamUserGroups, setTeamUserGroups] = useState<TeamUserGroup[]>([]);
   const [isNewTeamModalOpen, setIsNewTeamModalOpen] = useState(false);
 
   useEffect(() => {
@@ -138,9 +51,9 @@ export function TeamPage() {
           </button>
         </div>
         <div className="grid gap-6">
-          {teams.map((team) => (
+          {teamUserGroups.map((team) => (
             <div
-              key={team.id}
+              key={team.company_id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm"
             >
               <div className="p-6">
@@ -152,7 +65,7 @@ export function TeamPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                        {team.name}
+                        {team.team_name}
                       </h3>
                     </div>
                   </div>
@@ -168,7 +81,7 @@ export function TeamPage() {
                       <span>Active Tickets</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {team.metrics.activeTickets}
+                      'PLACEHOLDER FOR ACTUAL DATA'
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -177,7 +90,7 @@ export function TeamPage() {
                       <span>Avg Response</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {team.metrics.avgResponseTime}
+                      'PLACEHOLDER FOR ACTUAL DATA'
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -186,7 +99,7 @@ export function TeamPage() {
                       <span>Resolution Rate</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      {team.metrics.resolutionRate}
+                      'PLACEHOLDER FOR ACTUAL DATA'
                     </div>
                   </div>
                 </div>
@@ -202,22 +115,20 @@ export function TeamPage() {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {team.members.map((member) => (
+                    {team.users.map((member) => (
                       <div
-                        key={member.name}
+                        key={member.first_name}
                         className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                       >
-                        <img
-                          src={member.avatar}
-                          alt={member.name}
-                          className="w-10 h-10 rounded-full"
-                        />
+                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                          {member.first_name.slice(0, 2).toUpperCase()}
+                        </div>
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">
-                            {member.name}
+                            {member.first_name} {member.last_name}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {member.role}
+                            {member.title}
                           </div>
                         </div>
                       </div>

@@ -6,6 +6,7 @@ import {
   Users,
   BarChart2,
   Settings,
+  Briefcase,
   HelpCircle,
   Menu,
   X,
@@ -52,7 +53,7 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
           path: `/${role}/dashboard/agents`,
         },
         {
-          icon: Users,
+          icon: Briefcase,
           label: "Teams",
           view: "teams",
           path: `/${role}/dashboard/teams`,
