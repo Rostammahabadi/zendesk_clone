@@ -16,6 +16,8 @@ export function Header() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     localStorage.clear();
+    localStorage.theme = 'light';
+    document.documentElement.classList.remove('dark');
     navigate("/login");
   };
 

@@ -157,7 +157,7 @@ export function TeamPage() {
           </button>
         </div>
         <div className="grid gap-6">
-          {teamUserGroups?.map((team) => (
+          {teamUserGroups?.map((team: any) => (
             <div
               key={team.team_id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm"
@@ -221,28 +221,28 @@ export function TeamPage() {
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                     <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                       <MessageSquare className="w-4 h-4" />
-                      <span>Active Tickets</span>
+                      <span>Open Tickets</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      'PLACEHOLDER FOR ACTUAL DATA'
+                      {team.open_tickets}
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                     <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                       <Clock className="w-4 h-4" />
-                      <span>Avg Response</span>
+                      <span>In Progress Tickets</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      'PLACEHOLDER FOR ACTUAL DATA'
+                      {team.in_progress_tickets}
                     </div>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                     <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                       <BarChart2 className="w-4 h-4" />
-                      <span>Resolution Rate</span>
+                      <span>Closed Tickets</span>
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                      'PLACEHOLDER FOR ACTUAL DATA'
+                      {team.closed_tickets}
                     </div>
                   </div>
                 </div>

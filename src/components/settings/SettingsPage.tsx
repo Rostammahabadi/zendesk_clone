@@ -1,5 +1,9 @@
-import { useState } from "react";
-import { User, Bell, Shield, Palette, Globe, CreditCard } from "lucide-react";
+import { useState, useRef } from "react";
+import { User, Bell } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { supabase } from "../../lib/supabaseClient";
+import { toast } from "sonner";
+
 const settingsSections = [
   {
     id: "profile",
@@ -11,29 +15,58 @@ const settingsSections = [
     label: "Notifications",
     icon: Bell,
   },
-  {
-    id: "security",
-    label: "Security",
-    icon: Shield,
-  },
-  {
-    id: "appearance",
-    label: "Appearance",
-    icon: Palette,
-  },
-  {
-    id: "language",
-    label: "Language & Region",
-    icon: Globe,
-  },
-  {
-    id: "billing",
-    label: "Billing",
-    icon: CreditCard,
-  },
 ];
+
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState("profile");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { userData } = useAuth();
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (50MB = 50 * 1024 * 1024 bytes)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('File size must be less than 50MB');
+      return;
+    }
+
+    try {
+      const { data, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(`user-${userData?.id}/avatar.jpg`, file, {
+          upsert: true
+        });
+        console.log(data, uploadError);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(`user-${userData?.id}/avatar.jpg`);
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userData?.id);
+
+      if (updateError) throw updateError;
+
+      toast.success('Profile photo updated successfully');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to update profile photo');
+    }
+  };
+
   return (
     <div className="flex-1 overflow-hidden flex">
       {/* Settings Navigation */}
@@ -73,7 +106,17 @@ export function SettingsPage() {
                 <div className="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center text-white">
                   JD
                 </div>
-                <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
                   Change Photo
                 </button>
               </div>

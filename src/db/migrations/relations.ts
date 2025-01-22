@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userRoles, skills, userSkills, ticketTags, userTeams } from "./schema";
+import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userTeams, userRoles, skills, userSkills, ticketTags } from "./schema";
 
 export const ticketMessagesRelations = relations(ticketMessages, ({one}) => ({
 	user: one(users, {
@@ -21,18 +21,18 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	tickets_createdBy: many(tickets, {
 		relationName: "tickets_createdBy_users_id"
 	}),
-	company: one(companies, {
-		fields: [users.companyId],
-		references: [companies.id]
-	}),
-	userRoles: many(userRoles),
-	userSkills: many(userSkills),
 	userTeams_assignedBy: many(userTeams, {
 		relationName: "userTeams_assignedBy_users_id"
 	}),
 	userTeams_userId: many(userTeams, {
 		relationName: "userTeams_userId_users_id"
 	}),
+	company: one(companies, {
+		fields: [users.companyId],
+		references: [companies.id]
+	}),
+	userRoles: many(userRoles),
+	userSkills: many(userSkills),
 }));
 
 export const ticketsRelations = relations(tickets, ({one, many}) => ({
@@ -90,6 +90,23 @@ export const teamsRelations = relations(teams, ({one, many}) => ({
 	userTeams: many(userTeams),
 }));
 
+export const userTeamsRelations = relations(userTeams, ({one}) => ({
+	user_assignedBy: one(users, {
+		fields: [userTeams.assignedBy],
+		references: [users.id],
+		relationName: "userTeams_assignedBy_users_id"
+	}),
+	team: one(teams, {
+		fields: [userTeams.teamId],
+		references: [teams.id]
+	}),
+	user_userId: one(users, {
+		fields: [userTeams.userId],
+		references: [users.id],
+		relationName: "userTeams_userId_users_id"
+	}),
+}));
+
 export const userRolesRelations = relations(userRoles, ({one}) => ({
 	user: one(users, {
 		fields: [userRoles.userId],
@@ -124,22 +141,5 @@ export const ticketTagsRelations = relations(ticketTags, ({one}) => ({
 	ticket: one(tickets, {
 		fields: [ticketTags.ticketId],
 		references: [tickets.id]
-	}),
-}));
-
-export const userTeamsRelations = relations(userTeams, ({one}) => ({
-	user_assignedBy: one(users, {
-		fields: [userTeams.assignedBy],
-		references: [users.id],
-		relationName: "userTeams_assignedBy_users_id"
-	}),
-	team: one(teams, {
-		fields: [userTeams.teamId],
-		references: [teams.id]
-	}),
-	user_userId: one(users, {
-		fields: [userTeams.userId],
-		references: [users.id],
-		relationName: "userTeams_userId_users_id"
 	}),
 }));

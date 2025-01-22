@@ -167,15 +167,19 @@ export const useTeamUserGroups = () => {
     queryFn: async () => {
       if (!userData?.company_id) throw new Error('Company ID is required');
 
-      const { data: teamUserGroups, error } = await supabase
-        .from('team_user_groups')
-        .select('*')
-        .eq('company_id', userData.company_id);
+      // const { data: teamUserGroups, error } = await supabase
+      //   .from('team_user_groups')
+      //   .select('*')
+      //   .eq('company_id', userData.company_id);
 
+      const { data: teamUserGroups, error } = await supabase
+        .rpc('get_team_stats', {
+          days_ago: 30,
+        });
       if (error) throw error;
 
       // Transform the data to filter out null values from users array
-      return teamUserGroups?.map(group => ({
+      return teamUserGroups?.map((group: any) => ({
         ...group,
         users: group.users?.filter((user: any) => user !== null) || []
       })) || [];

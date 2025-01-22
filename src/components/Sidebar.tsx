@@ -4,7 +4,6 @@ import {
   Home,
   InboxIcon,
   Users,
-  BarChart2,
   Settings,
   Briefcase,
   HelpCircle,
@@ -41,12 +40,6 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
       return [
         ...baseItems,
         {
-          icon: BarChart2,
-          label: "Analytics",
-          view: "analytics",
-          path: `/${role}/dashboard/analytics`,
-        },
-        {
           icon: Users,
           label: "Agents",
           view: "agents",
@@ -57,12 +50,6 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
           label: "Teams",
           view: "teams",
           path: `/${role}/dashboard/teams`,
-        },
-        {
-          icon: Users,
-          label: "Customers",
-          view: "customers",
-          path: `/${role}/dashboard/customers`,
         },
         {
           icon: Settings,

@@ -216,6 +216,16 @@ export const LoginPage = () => {
             data: { role: 'admin' }  // or 'agent', 'customer', etc.
           })
           if (updateError) throw updateError
+        } else if (existingCompany && userProfile) {
+          if (userProfile.role === 'agent') {
+            navigate('/agent/dashboard')
+          } else if (userProfile.role === 'admin') {
+            navigate('/admin/dashboard')
+          } else if (userProfile.role === 'customer') {
+            navigate('/customer/dashboard')
+          } else {
+            navigate('/dashboard')
+          }
         }
           // If no company exists, show walkthrough for company creation
         setUserProfile({
@@ -373,7 +383,7 @@ export const LoginPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
-                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 ${
                     validationErrors.email ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
@@ -390,7 +400,7 @@ export const LoginPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 ${
                       validationErrors.password ? 'border-red-300' : 'border-gray-300'
                     }`}
                   />

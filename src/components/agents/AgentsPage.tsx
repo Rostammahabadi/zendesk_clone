@@ -4,9 +4,15 @@ import {
   MoreVertical,
   Plus,
 } from "lucide-react";
-import { useAgents } from "../../hooks/queries/useAgents";
+import { AgentDetailsPanel } from "./AgentDetailPanel";
+import { useAgents, useAgent } from "../../hooks/queries/useAgents";
+import { useState } from "react";
+
 export function AgentsPage() {
   const { data: agents = [] } = useAgents();
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const { data: selectedAgent } = useAgent(selectedAgentId || "");
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -23,7 +29,8 @@ export function AgentsPage() {
           {agents.map((agent) => (
             <div
               key={agent.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6"
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setSelectedAgentId(agent.id)}
             >
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                 {/* Agent Info */}
@@ -110,6 +117,12 @@ export function AgentsPage() {
           ))}
         </div>
       </div>
+      
+      <AgentDetailsPanel
+        agent={selectedAgent}
+        isOpen={!!selectedAgentId}
+        onClose={() => setSelectedAgentId(null)}
+      />
     </div>
   );
 }

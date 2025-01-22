@@ -204,6 +204,20 @@
       "when": 1737575978620,
       "tag": "0028_dear_morph",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1737578664075,
+      "tag": "0029_huge_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1737584302872,
+      "tag": "0030_next_guardian",
+      "breakpoints": true
     }
   ]
 }

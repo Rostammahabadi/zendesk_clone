@@ -9,13 +9,15 @@ import {
   X,
   History,
 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
 import { RichTextEditor } from "../ui/RichTextEditor";
+import { convertFromRaw } from 'draft-js';
 import { useTicket, useUpdateTicket, useAddTicketMessage } from "../../hooks/queries/useTickets";
+import { supabase } from "../../lib/supabaseClient";
 
 const statusOptions = ['open', 'pending', 'closed'];
 const priorityOptions = ['low', 'medium', 'high'];
@@ -28,11 +30,66 @@ export function TicketDetail() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [internalNote, setInternalNote] = useState("");
+  const [clearMessage, setClearMessage] = useState(false);
+  const [clearInternalNote, setClearInternalNote] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
-  const { data: ticket, isLoading } = useTicket(ticketId);
+  const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const { mutate: updateTicket } = useUpdateTicket();
   const { mutate: addMessage } = useAddTicketMessage();
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [ticket?.messages]);
+
+  useEffect(() => {
+    // Subscribe to ticket messages
+    const subscription = supabase
+      .channel(`ticket-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_messages',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to ticket events
+    const eventsSubscription = supabase
+      .channel(`ticket-events-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_events',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      eventsSubscription.unsubscribe();
+    };
+  }, [ticketId, refetch]);
 
   const handleBack = () => {
     navigate(`/${role}/dashboard/tickets`);
@@ -52,13 +109,27 @@ export function TicketDetail() {
     });
   };
 
+  const getPlainTextFromDraftJS = (contentString: string) => {
+    try {
+      const content = JSON.parse(contentString);
+      const contentState = convertFromRaw(content);
+      return contentState.getPlainText();
+    } catch (e) {
+      return contentString;
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!message.trim() || !ticket || !user) return;
 
-    addMessage({ ticketId: ticket.id, message, type: 'public' }, {
+    const plainTextMessage = getPlainTextFromDraftJS(message);
+    
+    addMessage({ ticketId: ticket.id, message: plainTextMessage, type: 'public' }, {
       onSuccess: () => {
         toast.success('Comment added successfully');
         setMessage('');
+        setClearMessage(true);
+        setTimeout(() => setClearMessage(false), 100);
       },
       onError: (error) => {
         console.error('Error adding comment:', error);
@@ -70,16 +141,31 @@ export function TicketDetail() {
   const handleAddInternalNote = async () => {
     if (!internalNote.trim() || !ticket || !user) return;
 
-    addMessage({ ticketId: ticket.id, message: internalNote, type: 'internal_note' }, {
+    const plainTextNote = getPlainTextFromDraftJS(internalNote);
+
+    addMessage({ ticketId: ticket.id, message: plainTextNote, type: 'internal_note' }, {
       onSuccess: () => {
         toast.success('Internal note added successfully');
         setInternalNote('');
+        setClearInternalNote(true);
+        setTimeout(() => setClearInternalNote(false), 100);
       },
       onError: (error) => {
         console.error('Error adding internal note:', error);
         toast.error('Failed to add internal note');
       }
     });
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent, type: 'comment' | 'internal_note') => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (type === 'comment') {
+        handleSubmitComment();
+      } else {
+        handleAddInternalNote();
+      }
+    }
   };
 
   const getEventDescription = (event: any) => {
@@ -255,13 +341,16 @@ export function TicketDetail() {
                   </p>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <RichTextEditor
                 initialContent={message}
                 onChange={setMessage}
-                placeholder="Type your message..."
-                className="min-h-[100px]"
+                onKeyPress={(e) => handleKeyPress(e, 'comment')}
+                placeholder="Type your message here..."
+                className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
+                clearContent={clearMessage}
               />
               <div className="mt-2 flex justify-end">
                 <button
@@ -297,14 +386,13 @@ export function TicketDetail() {
                     <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
                   </div>
                 ))}
-                <textarea
-                  value={internalNote}
-                  onChange={(e) => setInternalNote(e.target.value)}
+                <RichTextEditor
+                  initialContent={internalNote}
+                  onChange={setInternalNote}
+                  onKeyPress={(e) => handleKeyPress(e, 'internal_note')}
                   placeholder="Add an internal note..."
-                  className="w-full p-3 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 
-                    focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
-                    placeholder-gray-500 dark:placeholder-gray-400"
-                  rows={4}
+                  className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
+                  clearContent={clearInternalNote}
                 />
                 <button 
                   onClick={handleAddInternalNote}

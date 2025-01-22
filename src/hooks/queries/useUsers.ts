@@ -76,15 +76,13 @@ export const useUpdateUser = () => {
 
   return useMutation({
     mutationFn: async ({ userId, userData }: { userId: string; userData: Partial<Agent> }) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('users')
         .update(userData)
-        .eq('id', userId)
-        .select()
-        .single();
+        .eq('id', userId);
 
       if (error) throw error;
-      return data;
+      return { id: userId, ...userData };
     },
     onSuccess: (data) => {
       // Invalidate and refetch

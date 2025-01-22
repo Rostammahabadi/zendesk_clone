@@ -10,6 +10,8 @@ export const users = pgTable("users", {
 	role: varchar({ length: 50 }).notNull(),
 	companyId: uuid("company_id").notNull(),
 	title: text("title"),
+  avatarUrl: text("avatar_url"),
+  phoneNumber: text("phone_number"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [

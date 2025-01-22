@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Editor, EditorState, RichUtils, convertToRaw, convertFromRaw, DraftHandleValue } from 'draft-js';
 import 'draft-js/dist/Draft.css';
 import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
@@ -9,6 +9,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  onKeyPress?: (e: React.KeyboardEvent) => void;
+  clearContent?: boolean;
 }
 
 export function RichTextEditor({
@@ -16,7 +18,9 @@ export function RichTextEditor({
   onChange,
   placeholder = '',
   className = '',
-  readOnly = false
+  readOnly = false,
+  onKeyPress,
+  clearContent = false
 }: RichTextEditorProps) {
   const editorRef = useRef<Editor>(null);
   const [editorState, setEditorState] = useState(() => {
@@ -30,6 +34,12 @@ export function RichTextEditor({
     }
     return EditorState.createEmpty();
   });
+
+  useEffect(() => {
+    if (clearContent) {
+      setEditorState(EditorState.createEmpty());
+    }
+  }, [clearContent]);
 
   const handleEditorChange = (newState: EditorState) => {
     setEditorState(newState);
@@ -45,6 +55,14 @@ export function RichTextEditor({
     const newState = RichUtils.handleKeyCommand(editorState, command);
     if (newState) {
       handleEditorChange(newState);
+      return 'handled';
+    }
+    return 'not-handled';
+  };
+
+  const handleReturn = (e: React.KeyboardEvent): DraftHandleValue => {
+    if (e.key === 'Enter' && !e.shiftKey && onKeyPress) {
+      onKeyPress(e);
       return 'handled';
     }
     return 'not-handled';
@@ -127,6 +145,7 @@ export function RichTextEditor({
           placeholder={placeholder}
           readOnly={readOnly}
           handleKeyCommand={handleKeyCommand}
+          handleReturn={handleReturn}
           tabIndex={0}
         />
       </div>

@@ -12,6 +12,7 @@ export interface Agent {
   activeTickets?: number;
   resolvedToday?: number;
   responseTime?: string;
+  phone_number?: string;
 }
 
 export interface Customer {
