@@ -14,7 +14,7 @@ export const DashboardLayout = () => {
   }, [location]);
 
   return (
-    <div className="flex w-full h-screen bg-gray-50">
+    <div className="flex w-full h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar
         onNavigate={(view) => setCurrentView(view)}
         currentView={currentView}

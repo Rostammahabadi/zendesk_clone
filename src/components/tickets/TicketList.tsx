@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Clock, Tag } from "lucide-react";
 import { NewTicketModal } from "./NewTicketModal";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner";
@@ -84,54 +83,71 @@ export function TicketList() {
             <p className="text-gray-500">No tickets found</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow">
-            {tickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                onClick={() => handleTicketClick(ticket.id)}
-                className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{ticket.subject}</h3>
-                    <p className="text-sm text-gray-600">
-                      {ticket.created_by?.full_name || 'Unknown Customer'}
-                      {ticket.assigned_to && ` • Assigned to ${ticket.assigned_to.full_name}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.status === "open" ? "bg-green-100 text-green-800" 
-                        : ticket.status === "pending" ? "bg-yellow-100 text-yellow-800" 
-                        : "bg-blue-100 text-blue-800"
-                      }`}
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Subject
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {tickets.map((ticket) => (
+                    <tr 
+                      key={ticket.id}
+                      onClick={() => handleTicketClick(ticket.id)}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
-                      {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-                    </span>
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        ticket.priority === "high" ? "bg-red-100 text-red-800"
-                        : ticket.priority === "medium" ? "bg-orange-100 text-orange-800"
-                        : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {getTimeAgo(ticket.created_at)}
-                  </div>
-                  <div className="flex items-center">
-                    <Tag className="w-4 h-4 mr-1" />
-                    Support
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {ticket.id.slice(0, 8)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {ticket.subject}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {`${ticket.created_by?.first_name ?? ''} ${ticket.created_by?.last_name ?? ''}`.trim() || 'Unknown Customer'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${ticket.status === 'open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' : 
+                            ticket.status === 'closed' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 
+                            'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100'}`}>
+                          {ticket.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${ticket.priority === 'high' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 
+                            ticket.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' : 
+                            'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'}`}>
+                          {ticket.priority}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {getTimeAgo(ticket.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
         <NewTicketModal

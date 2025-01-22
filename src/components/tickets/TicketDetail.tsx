@@ -222,7 +222,7 @@ export function TicketDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -230,9 +230,9 @@ export function TicketDetail() {
 
   if (!ticket) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Ticket not found</h2>
+          <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Ticket not found</h2>
           <button
             onClick={handleBack}
             className="text-blue-500 hover:underline"
@@ -245,18 +245,18 @@ export function TicketDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-white p-4">
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center">
+            <h2 className="text-xl font-semibold flex items-center text-gray-900 dark:text-white">
               <span className="mr-2">#{ticket.id}</span>
               {ticket.subject}
             </h2>
             <button
               onClick={handleBack}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400"
             >
               <X className="w-5 h-5" />
             </button>
@@ -264,23 +264,22 @@ export function TicketDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <User className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Requester:</span>
-                <span className="text-sm font-medium">
+                <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Requester:</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {ticket.created_by?.full_name || 'Unknown User'}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Assignee:</span>
-                <select className="text-sm border-0 bg-transparent focus:ring-0">
+                <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Assignee:</span>
+                <select className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white">
                   <option>{ticket.assigned_to?.full_name || 'Unassigned'}</option>
-                  {/* Add more options as needed */}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
-                <Tag className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Tags:</span>
+                <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Tags:</span>
                 <TagInput
                   tags={ticket.tags?.map(tag => tag.id) || []}
                   onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
@@ -289,45 +288,45 @@ export function TicketDetail() {
             </div>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Hash className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Type:</span>
+                <Hash className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Type:</span>
                 <select
                   value={ticket?.type || 'question'}
                   onChange={(e) => handleFieldUpdate('type', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0"
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
                 >
                   {typeOptions.map((type) => (
-                    <option key={type} value={type}>
+                    <option key={type} value={type} className="bg-white dark:bg-gray-800">
                       {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
-                <Flag className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Priority:</span>
+                <Flag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Priority:</span>
                 <select 
                   value={ticket?.priority || 'medium'}
                   onChange={(e) => handleFieldUpdate('priority', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0"
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
                 >
                   {priorityOptions.map((priority) => (
-                    <option key={priority} value={priority}>
+                    <option key={priority} value={priority} className="bg-white dark:bg-gray-800">
                       {priority.charAt(0).toUpperCase() + priority.slice(1)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
-                <MessageSquare className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Topic:</span>
+                <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Topic:</span>
                 <select
                   value={ticket?.topic || 'support'}
                   onChange={(e) => handleFieldUpdate('topic', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0"
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
                 >
                   {topicOptions.map((topic) => (
-                    <option key={topic} value={topic}>
+                    <option key={topic} value={topic} className="bg-white dark:bg-gray-800">
                       {topic.charAt(0).toUpperCase() + topic.slice(1)}
                     </option>
                   ))}
@@ -336,15 +335,15 @@ export function TicketDetail() {
             </div>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Tag className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Status:</span>
+                <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
                 <select
                   value={ticket?.status || 'open'}
                   onChange={(e) => handleFieldUpdate('status', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0"
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
                 >
                   {statusOptions.map((status) => (
-                    <option key={status} value={status}>
+                    <option key={status} value={status} className="bg-white dark:bg-gray-800">
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                     </option>
                   ))}
@@ -359,46 +358,48 @@ export function TicketDetail() {
           <div className="flex-1 flex flex-col h-[calc(100vh-200px)]">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {publicMessages.map(message => (
-                <div key={message.id} className="bg-gray-50 rounded-lg p-4">
+                <div key={message.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
                         {message.sender?.full_name?.[0] || '?'}
                       </div>
                       <div>
-                        <div className="font-medium">{message.sender?.full_name || 'Unknown User'}</div>
-                        <div className="text-sm text-gray-500 flex items-center">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {message.sender?.full_name || 'Unknown User'}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           {new Date(message.created_at).toLocaleString()}
                         </div>
                       </div>
                     </div>
                   </div>
-                  <p className="text-gray-700">
+                  <p className="text-gray-700 dark:text-gray-300">
                     {message.body}
                   </p>
                 </div>
               ))}
             </div>
             {/* Reply Box */}
-            <div className="border-t border-gray-200 p-4 bg-white">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
               <div className="relative">
-                <div className="border rounded-lg">
+                <div className="border dark:border-gray-700 rounded-lg">
                   {/* Toolbar */}
-                  <div className="flex items-center space-x-2 border-b p-2">
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                  <div className="flex items-center space-x-2 border-b dark:border-gray-700 p-2">
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                       <Bold className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                       <Italic className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                       <AlignLeft className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                       <List className="w-4 h-4" />
                     </button>
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                       <ListOrdered className="w-4 h-4" />
                     </button>
                   </div>
@@ -406,24 +407,24 @@ export function TicketDetail() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type your reply..."
-                    className="w-full p-3 focus:outline-none resize-none"
+                    className="w-full p-3 focus:outline-none resize-none bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     rows={4}
                   />
-                  <div className="flex items-center justify-between p-2 border-t">
+                  <div className="flex items-center justify-between p-2 border-t dark:border-gray-700">
                     <div className="flex items-center space-x-2">
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <Paperclip className="w-4 h-4 text-gray-500" />
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
+                        <Paperclip className="w-4 h-4" />
                       </button>
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <Smile className="w-4 h-4 text-gray-500" />
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
+                        <Smile className="w-4 h-4" />
                       </button>
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <Link className="w-4 h-4 text-gray-500" />
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
+                        <Link className="w-4 h-4" />
                       </button>
                     </div>
                     <button
                       onClick={handleSubmitComment}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       Send
@@ -462,42 +463,46 @@ export function TicketDetail() {
             </div>
           </div>
           {/* Right Sidebar */}
-          <div className="hidden lg:block w-80 border-l border-gray-200 overflow-auto">
+          <div className="hidden lg:block w-80 border-l border-gray-200 dark:border-gray-700 overflow-auto bg-white dark:bg-gray-800">
             <div className="p-4">
-              <h3 className="font-medium mb-4">Internal Notes</h3>
+              <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
               <div className="space-y-4">
                 <textarea
                   value={internalNote}
                   onChange={(e) => setInternalNote(e.target.value)}
                   placeholder="Add an internal note..."
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 
+                    focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
+                    placeholder-gray-500 dark:placeholder-gray-400"
                   rows={4}
                 />
                 <button 
                   onClick={handleAddInternalNote}
                   disabled={!internalNote.trim()}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 
+                    rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 
+                    disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Note
                 </button>
                 <div className="space-y-3 max-h-60 overflow-y-auto">
                   {internalNotes.map((note) => (
-                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                    <div key={note.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-2">
                         <img
                           src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${note.sender.email}`}
                           alt={note.sender.full_name}
                           className="w-6 h-6 rounded-full"
                         />
-                        <span className="font-medium text-sm">
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">
                           {note.sender.full_name}
                         </span>
-                        <span className="text-gray-500 text-sm">·</span>
-                        <span className="text-gray-500 text-sm">
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">·</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">
                           {new Date(note.created_at).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                         {note.body}
                       </p>
                     </div>
@@ -505,18 +510,18 @@ export function TicketDetail() {
                 </div>
               </div>
               <div className="mt-6">
-                <h3 className="font-medium mb-4">Activity History</h3>
-                <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" ref={scrollableRef}>
+                <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Activity History</h3>
+                <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800" ref={scrollableRef}>
                   {events.map((event) => (
                     <div key={event.id} className="text-sm">
-                      <div className="flex items-center text-gray-500">
+                      <div className="flex items-center text-gray-500 dark:text-gray-400">
                         <History className="w-4 h-4 mr-1 flex-shrink-0" />
                         <span>{new Date(event.created_at).toLocaleString()}</span>
                       </div>
-                      <p>
+                      <p className="text-gray-700 dark:text-gray-300">
                         {getEventDescription(event)}
                         {event.triggered_by && (
-                          <span className="text-gray-500"> by {event.triggered_by.first_name} {event.triggered_by.last_name}</span>
+                          <span className="text-gray-500 dark:text-gray-400"> by {event.triggered_by.first_name} {event.triggered_by.last_name}</span>
                         )}
                       </p>
                     </div>

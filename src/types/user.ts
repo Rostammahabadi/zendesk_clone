@@ -5,8 +5,8 @@ export interface Agent {
   last_name: string;
   role: string;
   company_id: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
   status?: 'Online' | 'Busy' | 'Away';
   activeTickets?: number;
   resolvedToday?: number;
@@ -19,8 +19,8 @@ export interface Customer {
   first_name: string;
   last_name: string;
   company_id: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type UserRole = 'admin' | 'agent' | 'customer';
@@ -32,6 +32,6 @@ export interface User {
   last_name: string;
   role: UserRole;
   company_id: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }

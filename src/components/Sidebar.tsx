@@ -87,7 +87,7 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
     <>
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-3 left-4 z-50 p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+        className="lg:hidden fixed top-3 left-4 z-50 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
       >
         {isMobileMenuOpen ? (
           <X className="w-6 h-6" />
@@ -97,17 +97,19 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
       </button>
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 dark:bg-black/70 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
       <div
-        className={`${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed lg:relative z-40 w-64 bg-[#1D364D] text-white h-full transition-transform duration-200 ease-in-out flex flex-col`}
+        className={`${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0 fixed lg:relative z-40 w-64 bg-[#1D364D] dark:bg-gray-900 text-white h-full transition-transform duration-200 ease-in-out flex flex-col`}
       >
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-gray-700 dark:border-gray-800">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-[#1D364D] font-bold text-xl">A</span>
+            <div className="w-8 h-8 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center">
+              <span className="text-[#1D364D] dark:text-white font-bold text-xl">A</span>
             </div>
             <span className="font-semibold text-lg">Assistly</span>
           </div>
@@ -120,8 +122,8 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
                 onClick={() => handleNavigation(item)}
                 className={`flex items-center px-4 py-2 w-full ${
                   currentView === item.view
-                    ? "bg-[#2F4A63] text-white"
-                    : "text-gray-300 hover:bg-[#2F4A63] hover:text-white"
+                    ? "bg-[#2F4A63] dark:bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-[#2F4A63] dark:hover:bg-gray-700 hover:text-white"
                 }`}
               >
                 <item.icon className="w-5 h-5 mr-3" />
