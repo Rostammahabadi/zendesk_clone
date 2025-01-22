@@ -21,7 +21,7 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   // Get user role from metadata - fallback to customer if not set
   const userRole = user?.user_metadata?.role || 'customer';
   

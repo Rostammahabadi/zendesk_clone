@@ -1,0 +1,1 @@
+ALTER TABLE "role_permissions" ALTER COLUMN "permission" SET DATA TYPE varchar(50);

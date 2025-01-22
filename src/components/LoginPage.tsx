@@ -136,7 +136,7 @@ export const LoginPage = () => {
         })
         if (error) throw error
         if (!session) throw new Error('No session established')
-          
+        
         // Verify authentication state
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Authentication failed')
@@ -165,10 +165,19 @@ export const LoginPage = () => {
           throw profileError
         }
 
+        
         // If company exists and user profile exists, they're already set up
-        if (existingCompany && userProfile) {
-          
-          navigate(`/${userProfile.role.toLowerCase()}/dashboard`)
+        if (existingCompany && user.user_metadata.role) {
+          // Navigate based on role
+          if (userProfile.role === 'agent') {
+            navigate('/agent/dashboard')
+          } else if (userProfile.role === 'admin') {
+            navigate('/admin/dashboard')
+          } else if (userProfile.role === 'customer') {
+            navigate('/customer/dashboard')
+          } else {
+            navigate('/dashboard')
+          }
           return
         }
 
@@ -189,9 +198,12 @@ export const LoginPage = () => {
 
           setUserProfile(newProfile)
 
-          // Update user metadata with their role
+          // Update user metadata with their role and company_id
           const { error: updateError } = await supabase.auth.updateUser({
-            data: { role: 'agent', company_id: existingCompany.id }
+            data: { 
+              role: 'agent',
+              company_id: existingCompany.id
+            }
           })
           
           if (updateError) throw updateError
@@ -265,20 +277,31 @@ export const LoginPage = () => {
       // Get user's role from users table
       const { data: user, error: userError } = await supabase
         .from('users')
-        .select('role')
+        .select('role, company_id')
         .eq('id', session.user.id)
         .single()
 
       if (userError) throw userError
       if (!user) throw new Error('User not found')
 
-      // Update user metadata with role
+      // Update user metadata with role and company_id
       await supabase.auth.updateUser({
-        data: { role: user.role.toLowerCase() }
+        data: { 
+          role: user.role.toLowerCase(),
+          company_id: user.company_id
+        }
       })
 
-      // Navigate to role-specific dashboard
-      navigate(`/${user.role.toLowerCase()}/dashboard`)
+      // Navigate based on role
+      if (user.role === 'agent') {
+        navigate('/agent/dashboard')
+      } else if (user.role === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (user.role === 'customer') {
+        navigate('/customer/dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (error) {
       console.error('Error completing setup:', error)
       // Navigate to default dashboard if role fetch fails

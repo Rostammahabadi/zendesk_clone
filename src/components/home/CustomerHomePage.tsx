@@ -1,5 +1,4 @@
 import {
-  Plus,
   ExternalLink,
   MessageSquare,
   HelpCircle,
@@ -7,8 +6,6 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
-import { NewTicketModal } from "../tickets/NewTicketModal";
 import { useAuth } from "../../hooks/useAuth";
 
 const ticketStats = [
@@ -84,7 +81,6 @@ const supportResources = [
 ];
 
 export function CustomerHomePage() {
-  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const { userData } = useAuth();
 
   if (!userData) return null;
@@ -93,22 +89,13 @@ export function CustomerHomePage() {
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header Section */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Welcome back, {userData.first_name || userData.email}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Here's an overview of your support tickets and recent activity
-            </p>
-          </div>
-          <button
-            onClick={() => setIsNewTicketModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors duration-200 shadow-sm hover:shadow-md"
-          >
-            <Plus className="h-4 w-4" />
-            Create New Ticket
-          </button>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Welcome back, {userData.first_name || userData.email}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Here's an overview of your support tickets and recent activity
+          </p>
         </div>
 
         {/* Quick Stats */}
@@ -204,11 +191,6 @@ export function CustomerHomePage() {
           </div>
         </div>
       </div>
-
-      <NewTicketModal
-        isOpen={isNewTicketModalOpen}
-        onClose={() => setIsNewTicketModalOpen(false)}
-      />
     </div>
   );
 }

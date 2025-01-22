@@ -80,13 +80,16 @@ export const AuthCallback = () => {
           setUserProfile(newProfile)
           setShowWalkthrough(true)
         } else {
-          // Update user metadata with their role
-          await supabase.auth.updateUser({
-            data: { role: existingProfile.role.toLowerCase() }
-          })
-          
-          // Navigate to appropriate dashboard
-          navigate(`/${existingProfile.role.toLowerCase()}/dashboard`)
+          // Navigate based on role
+          if (existingProfile.role === 'agent') {
+            navigate('/agent/dashboard')
+          } else if (existingProfile.role === 'admin') {
+            navigate('/admin/dashboard')
+          } else if (existingProfile.role === 'customer') {
+            navigate('/customer/dashboard')
+          } else {
+            navigate('/dashboard')
+          }
         }
       } catch (error) {
         console.error('Auth callback error:', error)
@@ -111,7 +114,7 @@ export const AuthCallback = () => {
       // Get user's role from users table
       const { data: user, error: userError } = await supabase
         .from('users')
-        .select('role')
+        .select('role, company_id')
         .eq('id', session.user.id)
         .single()
 
@@ -120,11 +123,22 @@ export const AuthCallback = () => {
 
       // Update user metadata with role
       await supabase.auth.updateUser({
-        data: { role: user.role.toLowerCase() }
+        data: { 
+          role: user.role.toLowerCase(),
+          company_id: user.company_id
+        }
       })
 
-      // Navigate to role-specific dashboard
-      navigate(`/${user.role.toLowerCase()}/dashboard`)
+      // Navigate based on role
+      if (user.role === 'agent') {
+        navigate('/agent/dashboard')
+      } else if (user.role === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (user.role === 'customer') {
+        navigate('/customer/dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (error) {
       console.error('Error completing setup:', error)
       Sentry.captureException(error, {

@@ -1,8 +1,8 @@
 import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, unique, bigint, uniqueIndex, serial, integer, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const appPermission = pgEnum("app_permission", ['channels.delete', 'messages.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'user_teams.insert', 'user_teams.select'])
-export const appRole = pgEnum("app_role", ['admin', 'moderator'])
+export const appPermission = pgEnum("app_permission", ['companies.insert', 'companies.select', 'companies.update', 'companies.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'teams.insert', 'teams.select', 'teams.update', 'teams.delete', 'user_teams.insert', 'user_teams.select', 'user_teams.update', 'user_teams.delete', 'tags.insert', 'tags.select', 'tags.update', 'tags.delete', 'tickets.insert', 'tickets.select', 'tickets.update', 'tickets.delete', 'ticket_messages.insert', 'ticket_messages.select', 'ticket_messages.update', 'ticket_messages.delete', 'ticket_events.insert', 'ticket_events.select', 'ticket_events.update', 'ticket_events.delete', 'ticket_tags.insert', 'ticket_tags.select', 'ticket_tags.update', 'ticket_tags.delete', 'user_roles.insert', 'user_roles.select', 'user_roles.update', 'user_roles.delete', 'skills.insert', 'skills.select', 'skills.update', 'skills.delete', 'user_skills.insert', 'user_skills.select', 'user_skills.update', 'user_skills.delete'])
+export const appRole = pgEnum("app_role", ['admin', 'agent', 'customer'])
 
 
 export const ticketMessages = pgTable("ticket_messages", {
@@ -259,4 +259,5 @@ export const userTeams = pgTable("user_teams", {
 ]);
 export const teamUserGroups = pgView("team_user_groups", {	teamName: text("team_name"),
 	userFirstNames: text("user_first_names"),
-}).as(sql`SELECT t.name AS team_name, array_agg(u.first_name) AS user_first_names FROM user_teams ut JOIN users u ON ut.user_id = u.id JOIN teams t ON ut.team_id = t.id WHERE u.company_id = t.company_id GROUP BY t.name`);
+	companyId: uuid("company_id"),
+}).as(sql`SELECT t.name AS team_name, array_agg(u.first_name) AS user_first_names, t.company_id FROM user_teams ut JOIN users u ON ut.user_id = u.id JOIN teams t ON ut.team_id = t.id WHERE u.company_id = t.company_id GROUP BY t.name, t.company_id`);

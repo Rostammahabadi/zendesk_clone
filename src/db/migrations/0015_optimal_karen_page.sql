@@ -1,0 +1,10 @@
+ALTER TABLE "public"."role_permissions" ALTER COLUMN "permission" SET DATA TYPE text;--> statement-breakpoint
+DROP TYPE "public"."app_permission";--> statement-breakpoint
+CREATE TYPE "public"."app_permission" AS ENUM('companies.insert', 'companies.select', 'companies.update', 'companies.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'teams.insert', 'teams.select', 'teams.update', 'teams.delete', 'user_teams.insert', 'user_teams.select', 'user_teams.update', 'user_teams.delete', 'tags.insert', 'tags.select', 'tags.update', 'tags.delete', 'tickets.insert', 'tickets.select', 'tickets.update', 'tickets.delete', 'ticket_messages.insert', 'ticket_messages.select', 'ticket_messages.update', 'ticket_messages.delete', 'ticket_events.insert', 'ticket_events.select', 'ticket_events.update', 'ticket_events.delete', 'ticket_tags.insert', 'ticket_tags.select', 'ticket_tags.update', 'ticket_tags.delete', 'user_roles.insert', 'user_roles.select', 'user_roles.update', 'user_roles.delete', 'skills.insert', 'skills.select', 'skills.update', 'skills.delete', 'user_skills.insert', 'user_skills.select', 'user_skills.update', 'user_skills.delete');--> statement-breakpoint
+ALTER TABLE "public"."role_permissions" ALTER COLUMN "permission" SET DATA TYPE "public"."app_permission" USING "permission"::"public"."app_permission";--> statement-breakpoint
+ALTER TABLE "public"."role_permissions" ALTER COLUMN "role" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "public"."user_roles" ALTER COLUMN "role" SET DATA TYPE text;--> statement-breakpoint
+DROP TYPE "public"."app_role";--> statement-breakpoint
+CREATE TYPE "public"."app_role" AS ENUM('admin', 'agent', 'customer');--> statement-breakpoint
+ALTER TABLE "public"."role_permissions" ALTER COLUMN "role" SET DATA TYPE "public"."app_role" USING "role"::"public"."app_role";--> statement-breakpoint
+ALTER TABLE "public"."user_roles" ALTER COLUMN "role" SET DATA TYPE "public"."app_role" USING "role"::"public"."app_role";
