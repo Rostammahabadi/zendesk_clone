@@ -80,25 +80,27 @@ export const useCreateTeam = () => {
         .insert({ 
           name, 
           company_id: userData?.company_id,
-          created_by: userData?.id 
         })
         .select()
         .single();
 
       if (teamError) throw teamError;
 
-      // Then create user_team relationships
-      const userTeams = memberIds.map(userId => ({
-        team_id: team.id,
-        user_id: userId,
-        assigned_by: userData?.id,
-      }));
+      if (memberIds.length > 0) {
+        // Then create user_team relationships
+        const { error: membersError } = await supabase
+          .from('user_teams')
+          .insert(
+            memberIds.map(userId => ({
+              team_id: team.id,
+              user_id: userId,
+              assigned_by: userData?.id,
+              assigned_at: new Date().toISOString()
+            }))
+          );
 
-      const { error: membersError } = await supabase
-        .from('user_teams')
-        .insert(userTeams);
-
-      if (membersError) throw membersError;
+        if (membersError) throw membersError;
+      }
 
       return team;
     },
@@ -110,71 +112,99 @@ export const useCreateTeam = () => {
 
 export const useUpdateTeam = () => {
   const queryClient = useQueryClient();
+  const { userData } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      teamId, 
-      data 
-    }: { 
-      teamId: string; 
-      data: { name?: string; memberIds?: string[] } 
-    }) => {
+    mutationFn: async ({ teamId, name }: { teamId: string; name: string }) => {
+      if (!userData?.company_id) throw new Error('Company ID is required');
+      
+      const { error } = await supabase
+        .from('teams')
+        .update({ name })
+        .eq('id', teamId)
+        .eq('company_id', userData.company_id);
 
-      if (data.name) {
-        const { error: nameError } = await supabase
-          .from('teams')
-          .update({ name: data.name })
-          .eq('id', teamId);
-
-        if (nameError) throw nameError;
-      }
-
-      if (data.memberIds) {
-        // First remove all existing members
-        const { error: deleteError } = await supabase
-          .from('user_teams')
-          .delete()
-          .eq('team_id', teamId);
-
-        if (deleteError) throw deleteError;
-
-        // Then add new members
-        const { error: membersError } = await supabase
-          .from('user_teams')
-          .insert(
-            data.memberIds.map(userId => ({
-              team_id: teamId,
-              user_id: userId,
-            }))
-          );
-
-        if (membersError) throw membersError;
-      }
-
-      return { id: teamId, ...data };
+      if (error) throw error;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
+      // Invalidate both teams and teamUserGroups queries to refetch the updated data
       queryClient.invalidateQueries({ queryKey: ['teams'] });
-      queryClient.invalidateQueries({ queryKey: ['teams', data.id] });
-    },
+      queryClient.invalidateQueries({ queryKey: ['teamUserGroups'] });
+    }
   });
 };
 
 export const useDeleteTeam = () => {
   const queryClient = useQueryClient();
+  const { userData } = useAuth();
 
   return useMutation({
     mutationFn: async (teamId: string) => {
+      if (!userData?.company_id) throw new Error('Company ID is required');
+      
       const { error } = await supabase
         .from('teams')
         .delete()
-        .eq('id', teamId);
+        .eq('id', teamId)
+        .eq('company_id', userData.company_id);
 
       if (error) throw error;
       return teamId;
     },
     onSuccess: () => {
+      // Invalidate both queries to refetch the updated data
       queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['teamUserGroups'] });
+    }
+  });
+};
+
+export const useTeamUserGroups = () => {
+  const { userData } = useAuth();
+  
+  return useQuery({
+    queryKey: ['teamUserGroups', userData?.company_id],
+    queryFn: async () => {
+      if (!userData?.company_id) throw new Error('Company ID is required');
+
+      const { data: teamUserGroups, error } = await supabase
+        .from('team_user_groups')
+        .select('*')
+        .eq('company_id', userData.company_id);
+
+      if (error) throw error;
+
+      // Transform the data to filter out null values from users array
+      return teamUserGroups?.map(group => ({
+        ...group,
+        users: group.users?.filter((user: any) => user !== null) || []
+      })) || [];
     },
+    enabled: !!userData?.company_id,
+  });
+};
+
+export const useAddTeamMember = () => {
+  const queryClient = useQueryClient();
+  const { userData } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ teamId, userId }: { teamId: string; userId: string }) => {
+      if (!userData?.id) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('user_teams')
+        .insert({
+          user_id: userId,
+          team_id: teamId,
+          assigned_by: userData.id,
+          assigned_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teamUserGroups'] });
+    }
   });
 }; 

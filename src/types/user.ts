@@ -6,6 +6,7 @@ export interface Agent {
   role: string;
   company_id: string;
   created_at?: string;
+  title?: string;
   updated_at?: string;
   status?: 'Online' | 'Busy' | 'Away';
   activeTickets?: number;
@@ -27,11 +28,12 @@ export type UserRole = 'admin' | 'agent' | 'customer';
 
 export interface User {
   id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: UserRole;
-  company_id: string;
+  email?: string;
+  title?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: UserRole;
+  company_id?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,8 +1,9 @@
-import { pgTable, uuid, timestamp, index, primaryKey, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, index, foreignKey } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { teams } from './teams';
 
 export const userTeams = pgTable("user_teams", {
+  id: uuid("id").primaryKey().defaultRandom(),
 	userId: uuid("user_id").notNull(),
 	teamId: uuid("team_id").notNull(),
 	assignedAt: timestamp("assigned_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -24,6 +25,5 @@ export const userTeams = pgTable("user_teams", {
 			columns: [table.userId],
 			foreignColumns: [users.id],
 			name: "user_teams_user_id_users_id_fk"
-		}).onDelete("cascade"),
-	primaryKey({ columns: [table.userId, table.teamId], name: "user_teams_user_id_team_id_pk"}),
+		}).onDelete("cascade")
 ]);

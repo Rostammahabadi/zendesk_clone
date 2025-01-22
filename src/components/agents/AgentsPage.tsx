@@ -4,77 +4,9 @@ import {
   MoreVertical,
   Plus,
 } from "lucide-react";
-const agents = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    status: "Online",
-    role: "Senior Support Agent",
-    department: "Technical Support",
-    metrics: {
-      responseTime: "8 min",
-      resolutionRate: "94%",
-      satisfaction: "4.8/5",
-      ticketsResolved: 145,
-      activeTickets: 4,
-    },
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    phone: "+1 (555) 987-6543",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-    status: "Busy",
-    role: "Support Team Lead",
-    department: "Customer Success",
-    metrics: {
-      responseTime: "12 min",
-      resolutionRate: "92%",
-      satisfaction: "4.7/5",
-      ticketsResolved: 132,
-      activeTickets: 6,
-    },
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    email: "mike.j@example.com",
-    phone: "+1 (555) 456-7890",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
-    status: "Away",
-    role: "Support Agent",
-    department: "Billing Support",
-    metrics: {
-      responseTime: "10 min",
-      resolutionRate: "88%",
-      satisfaction: "4.6/5",
-      ticketsResolved: 98,
-      activeTickets: 2,
-    },
-  },
-  {
-    id: 4,
-    name: "Sarah Wilson",
-    email: "sarah.w@example.com",
-    phone: "+1 (555) 234-5678",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    status: "Online",
-    role: "Support Agent",
-    department: "Technical Support",
-    metrics: {
-      responseTime: "15 min",
-      resolutionRate: "90%",
-      satisfaction: "4.5/5",
-      ticketsResolved: 112,
-      activeTickets: 5,
-    },
-  },
-];
+import { useAgents } from "../../hooks/queries/useAgents";
 export function AgentsPage() {
+  const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -97,11 +29,9 @@ export function AgentsPage() {
                 {/* Agent Info */}
                 <div className="flex items-start space-x-4">
                   <div className="relative">
-                    <img
-                      src={agent.avatar}
-                      alt={agent.name}
-                      className="w-12 h-12 rounded-full"
-                    />
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                      {agent?.first_name?.slice(0, 2).toUpperCase()}
+                    </div>
                     <span
                       className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800
                         ${agent.status === "Online" ? "bg-green-500" : agent.status === "Busy" ? "bg-yellow-500" : "bg-gray-500"}`}
@@ -109,25 +39,25 @@ export function AgentsPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900 dark:text-white">
-                      {agent.name}
+                      {agent?.first_name} {agent?.last_name}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {agent.role}
+                      {agent?.title}
                     </p>
                     <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
                       <span className="flex items-center">
                         <Mail className="w-4 h-4 mr-1" />
-                        {agent.email}
+                        {agent?.email}
                       </span>
                       <span className="flex items-center">
                         <MessageSquare className="w-4 h-4 mr-1" />
-                        {agent.department}
+                        {agent.title}
                       </span>
                     </div>
                   </div>
                 </div>
                 {/* Metrics */}
-                <div className="flex flex-wrap gap-4 lg:gap-6">
+                {/* <div className="flex flex-wrap gap-4 lg:gap-6">
                   <div className="text-center">
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       Response Time
@@ -168,7 +98,7 @@ export function AgentsPage() {
                       {agent.metrics.activeTickets}
                     </div>
                   </div>
-                </div>
+                </div> */}
                 {/* Actions */}
                 <div className="flex items-center space-x-2">
                   <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">

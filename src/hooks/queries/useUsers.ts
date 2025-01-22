@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 import { Agent } from '../../types/user';
 import { useAuth } from '../useAuth';
+import { User } from '../../types/ticket';
 
 export const useAgents = () => {
   const { userData } = useAuth();
@@ -28,13 +29,26 @@ export const useCompanyUsers = () => {
   return useQuery({
     queryKey: ['users', userData?.company_id],
     queryFn: async () => {
+      if (!userData?.company_id) {
+        throw new Error('No company ID available');
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('company_id', userData?.company_id);
+        .eq('company_id', userData.company_id);
 
       if (error) throw error;
-      return data;
+      return data.map(user => ({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.role,
+        company_id: user.company_id,
+        title: user.title,
+        full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim()
+      })) as User[];
     },
     enabled: !!userData?.company_id,
   });

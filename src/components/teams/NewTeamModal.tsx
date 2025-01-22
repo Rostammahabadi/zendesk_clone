@@ -5,31 +5,50 @@ import {
   AlertCircle,
   Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCompanyUsers } from "../../hooks/queries/useUsers";
 import { useCreateTeam } from "../../hooks/queries/useTeams";
 import { toast } from "sonner";
+import { User } from "../../types/user";
 
 interface NewTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface FormData {
+  name: string;
+  members: User[];
+}
+
 export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
   const [step, setStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
-    members: [] as string[],
+    members: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: users, isLoading: isLoadingUsers } = useCompanyUsers();
   const { mutate: createTeam, isPending: isCreating } = useCreateTeam();
 
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(1);
+      setSearchQuery("");
+      setFormData({
+        name: "",
+        members: [],
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
+
   const filteredUsers = users?.filter(
     (user) =>
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.first_name && user.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
   ) ?? [];
@@ -52,33 +71,31 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
     if (validateStep()) setStep(step + 1);
   };
 
-  const handleSubmit = () => {
-    if (validateStep()) {
-      createTeam(
-        { 
-          name: formData.name.trim(), 
-          memberIds: formData.members 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createTeam(
+      { 
+        name: formData.name, 
+        memberIds: formData.members.map(member => member.id)
+      },
+      {
+        onSuccess: () => {
+          onClose();
         },
-        {
-          onSuccess: () => {
-            toast.success("Team created successfully!");
-            onClose();
-          },
-          onError: (error) => {
-            toast.error("Failed to create team. Please try again.");
-            console.error("Error creating team:", error);
-          },
+        onError: (error) => {
+          toast.error('Failed to create team');
+          console.error('Error creating team:', error);
         }
-      );
-    }
+      }
+    );
   };
 
   const toggleMember = (userId: string) => {
     setFormData((prev) => ({
       ...prev,
-      members: prev.members.includes(userId)
-        ? prev.members.filter((id) => id !== userId)
-        : [...prev.members, userId],
+      members: prev.members.find(m => m.id === userId)
+        ? prev.members.filter(m => m.id !== userId)
+        : [...prev.members, users?.find(u => u.id === userId)!]
     }));
   };
 
@@ -178,7 +195,7 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
                       key={user.id}
                       onClick={() => toggleMember(user.id)}
                       className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                        formData.members.includes(user.id)
+                        formData.members.some(member => member.id === user.id)
                           ? "bg-indigo-50 border border-indigo-500 dark:bg-indigo-800/30 dark:border-indigo-600"
                           : "bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700"
                       }`}

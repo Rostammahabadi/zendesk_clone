@@ -1,0 +1,1 @@
+ALTER TABLE "user_teams" DROP CONSTRAINT "user_teams_user_id_team_id_pk";
