@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
-import { ticketService } from "../../services/ticketService";
 import { TicketStatus, TicketPriority, TicketTopic, TicketType } from "../../types/ticket";
 import { Dialog } from "@headlessui/react";
 import { RichTextEditor } from "../ui/RichTextEditor";
+import { useCreateTicket } from "../../hooks/queries/useTickets";
+import { useAgents } from "../../hooks/queries/useUsers";
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const topicOptions: TicketTopic[] = ['support', 'billing', 'technical'];
 const typeOptions: TicketType[] = ['question', 'problem', 'feature_request'];
 
 export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
-  const { user, userData } = useAuth();
+  const { userData } = useAuth();
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
@@ -27,64 +28,36 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
     type: "question" as TicketType,
     assigned_to: null as string | null,
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [agents, setAgents] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (isOpen && user?.id) {
-      fetchAgents();
-    }
-  }, [isOpen, user?.id]);
-
-  const fetchAgents = async () => {
-    try {
-      if (userData) {
-        const agentsData = await ticketService.fetchAgents(userData.company_id);
-        setAgents(agentsData || []);
-      }
-    } catch (error) {
-      console.error('Error fetching agents:', error);
-      toast.error('Failed to load agents');
-    }
-  };
-
+  const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
+  const { mutate: createTicket, isPending: isCreating } = useCreateTicket();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id) return;
 
-    try {
-      await ticketService.createTicket({
-        subject: formData.subject,
-        description: formData.description,
-        status: formData.status,
-        priority: formData.priority,
-        topic: formData.topic,
-        type: formData.type,
-        assigned_to: formData.assigned_to,
-        created_by: user.id,
-        company_id: userData?.company_id
-      });
-      
-      toast.success("Ticket created successfully");
-      setFormData({
-        subject: "",
-        description: "",
-        status: "open" as TicketStatus,
-        priority: "medium" as TicketPriority,
-        topic: "support" as TicketTopic,
-        type: "question" as TicketType,
-        assigned_to: null,
-      });
-      onClose();
-    } catch (error) {
-      console.error("Error creating ticket:", error);
-      toast.error("Failed to create ticket");
-    }
+    createTicket(formData, {
+      onSuccess: () => {
+        toast.success("Ticket created successfully");
+        setFormData({
+          subject: "",
+          description: "",
+          status: "open" as TicketStatus,
+          priority: "medium" as TicketPriority,
+          topic: "support" as TicketTopic,
+          type: "question" as TicketType,
+          assigned_to: null,
+        });
+        onClose();
+      },
+      onError: (error) => {
+        console.error("Error creating ticket:", error);
+        toast.error("Failed to create ticket");
+      }
+    });
   };
 
   if (!isOpen) return null;
+
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -182,20 +155,47 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Assign To
+                </label>
+                <select
+                  value={formData.assigned_to || ''}
+                  onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value || null })}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100"
+                  disabled={isLoadingAgents}
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                disabled={isCreating}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg flex items-center gap-2"
+                disabled={isCreating}
               >
-                Create Ticket
+                {isCreating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Ticket'
+                )}
               </button>
             </div>
           </form>

@@ -1,27 +1,22 @@
-import { pgTable, serial, uuid, varchar, timestamp, integer } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { pgTable, serial, uuid, varchar, timestamp, integer, foreignKey } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { skills } from "./skills";
 
 export const userSkills = pgTable("user_skills", {
-  // Primary key (serial)
-  id: serial("id").primaryKey(),
-
-  // References users.user_id
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-
-  // References skills.id
-  skillId: integer("skill_id")
-    .notNull()
-    .references(() => skills.id, { onDelete: "cascade" }),
-
-  // Optional proficiency level
-  proficiency: varchar("proficiency", { length: 50 }),
-
-  // Timestamp
-  addedAt: timestamp("added_at", { withTimezone: true })
-    .default(sql`NOW()`)
-    .notNull(),
-});
+  id: serial().primaryKey().notNull(),
+  userId: uuid("user_id").notNull(),
+  skillId: integer("skill_id").notNull(),
+  proficiency: varchar({ length: 50 }),
+  addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+  foreignKey({
+    columns: [table.skillId],
+    foreignColumns: [skills.id],
+    name: "user_skills_skill_id_skills_id_fk"
+  }).onDelete("cascade"),
+  foreignKey({
+    columns: [table.userId],
+    foreignColumns: [users.id],
+    name: "user_skills_user_id_users_id_fk"
+  }).onDelete("cascade"),
+]);

@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -44,6 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user.id);
+    }
+  }, [user]);
+
   const checkUserDataForConsistency = () => {
     if (localStorage.getItem('userData')) {
       const storedUserData = JSON.parse(localStorage.getItem('userData') || '{}');
@@ -52,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserData(null);
         return false;
       }
-
       if (!storedUserData.id || !storedUserData.email || !storedUserData.first_name || !storedUserData.last_name || !storedUserData.role || !storedUserData.company_id) {
         localStorage.removeItem('userData');
         setUserData(null);
@@ -79,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       setUserData(data);
+
       localStorage.setItem('userData', JSON.stringify(data));
     } catch (error) {
       console.error('Error fetching user data:', error);

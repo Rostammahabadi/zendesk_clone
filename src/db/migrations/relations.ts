@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, usersInAuth, userRoles, ticketTags, userTeams } from "./schema";
+import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userRoles, skills, userSkills, ticketTags, userTeams } from "./schema";
 
 export const ticketMessagesRelations = relations(ticketMessages, ({one}) => ({
 	user: one(users, {
@@ -25,6 +25,8 @@ export const usersRelations = relations(users, ({one, many}) => ({
 		fields: [users.companyId],
 		references: [companies.id]
 	}),
+	userRoles: many(userRoles),
+	userSkills: many(userSkills),
 	userTeams_assignedBy: many(userTeams, {
 		relationName: "userTeams_assignedBy_users_id"
 	}),
@@ -77,6 +79,7 @@ export const companiesRelations = relations(companies, ({many}) => ({
 	teams: many(teams),
 	tickets: many(tickets),
 	users: many(users),
+	skills: many(skills),
 }));
 
 export const teamsRelations = relations(teams, ({one, many}) => ({
@@ -88,14 +91,29 @@ export const teamsRelations = relations(teams, ({one, many}) => ({
 }));
 
 export const userRolesRelations = relations(userRoles, ({one}) => ({
-	usersInAuth: one(usersInAuth, {
+	user: one(users, {
 		fields: [userRoles.userId],
-		references: [usersInAuth.id]
+		references: [users.id]
 	}),
 }));
 
-export const usersInAuthRelations = relations(usersInAuth, ({many}) => ({
-	userRoles: many(userRoles),
+export const skillsRelations = relations(skills, ({one, many}) => ({
+	company: one(companies, {
+		fields: [skills.companyId],
+		references: [companies.id]
+	}),
+	userSkills: many(userSkills),
+}));
+
+export const userSkillsRelations = relations(userSkills, ({one}) => ({
+	skill: one(skills, {
+		fields: [userSkills.skillId],
+		references: [skills.id]
+	}),
+	user: one(users, {
+		fields: [userSkills.userId],
+		references: [users.id]
+	}),
 }));
 
 export const ticketTagsRelations = relations(ticketTags, ({one}) => ({

@@ -1,3 +1,6 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { teamService } from "../../services/teamService";
 import {
   Users,
   Plus,
@@ -7,11 +10,13 @@ import {
   MessageSquare,
   Clock,
 } from "lucide-react";
+import { TeamUserGroup } from "../../types/team";
+import { NewTeamModal } from "./NewTeamModal";
+
 const teams = [
   {
     id: 1,
     name: "Technical Support",
-    description: "Handles technical issues and product-related queries",
     lead: {
       name: "John Doe",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
@@ -42,7 +47,6 @@ const teams = [
   {
     id: 2,
     name: "Billing Support",
-    description: "Manages billing inquiries and payment-related issues",
     lead: {
       name: "Jane Smith",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
@@ -68,7 +72,6 @@ const teams = [
   {
     id: 3,
     name: "Customer Success",
-    description: "Focuses on customer onboarding and relationship management",
     lead: {
       name: "Emily Chen",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
@@ -97,7 +100,23 @@ const teams = [
     ],
   },
 ];
+
 export function TeamPage() {
+  const { user, userData, isLoading } = useAuth();
+  const [teamUserGroups, setTeamUserGroups] = useState<TeamUserGroup[]>([]);
+  const [isNewTeamModalOpen, setIsNewTeamModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (userData) {
+      const fetchTeamUserGroups = async () => {
+        const teamUserGroups = await teamService.fetchTeamUserGroups(userData.company_id);
+        setTeamUserGroups(teamUserGroups);
+      };
+
+      fetchTeamUserGroups();
+    }
+  }, [userData]);
+
   return (
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -110,7 +129,10 @@ export function TeamPage() {
               Manage your support teams and members
             </p>
           </div>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+          <button 
+            onClick={() => setIsNewTeamModalOpen(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
+          >
             <Plus className="w-5 h-5 mr-2" />
             Create New Team
           </button>
@@ -132,9 +154,6 @@ export function TeamPage() {
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         {team.name}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {team.description}
-                      </p>
                     </div>
                   </div>
                   <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
@@ -218,6 +237,10 @@ export function TeamPage() {
             </div>
           ))}
         </div>
+        <NewTeamModal 
+          isOpen={isNewTeamModalOpen}
+          onClose={() => setIsNewTeamModalOpen(false)}
+        />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, unique, bigint, primaryKey, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, unique, bigint, uniqueIndex, serial, integer, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const appPermission = pgEnum("app_permission", ['channels.delete', 'messages.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'user_teams.insert', 'user_teams.select'])
@@ -178,6 +178,40 @@ export const userRoles = pgTable("user_roles", {
 	pgPolicy("Allow auth admin to read user roles", { as: "permissive", for: "select", to: ["supabase_auth_admin"], using: sql`true` }),
 ]);
 
+export const skills = pgTable("skills", {
+	id: serial().primaryKey().notNull(),
+	companyId: uuid("company_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.companyId],
+			foreignColumns: [companies.id],
+			name: "skills_company_id_companies_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const userSkills = pgTable("user_skills", {
+	id: serial().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	skillId: integer("skill_id").notNull(),
+	proficiency: varchar({ length: 50 }),
+	addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.skillId],
+			foreignColumns: [skills.id],
+			name: "user_skills_skill_id_skills_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_skills_user_id_users_id_fk"
+		}).onDelete("cascade"),
+]);
+
 export const ticketTags = pgTable("ticket_tags", {
 	ticketId: uuid("ticket_id").notNull(),
 	tagId: uuid("tag_id").notNull(),
@@ -223,3 +257,6 @@ export const userTeams = pgTable("user_teams", {
 		}).onDelete("cascade"),
 	primaryKey({ columns: [table.userId, table.teamId], name: "user_teams_user_id_team_id_pk"}),
 ]);
+export const teamUserGroups = pgView("team_user_groups", {	teamName: text("team_name"),
+	userFirstNames: text("user_first_names"),
+}).as(sql`SELECT t.name AS team_name, array_agg(u.first_name) AS user_first_names FROM user_teams ut JOIN users u ON ut.user_id = u.id JOIN teams t ON ut.team_id = t.id WHERE u.company_id = t.company_id GROUP BY t.name`);

@@ -1,26 +1,17 @@
-import { pgTable, serial, varchar, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { pgTable, serial, varchar, timestamp, uniqueIndex, uuid, foreignKey } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
 
 export const skills = pgTable("skills", {
-  // Primary key (serial)
-  id: serial("id").primaryKey(),
-  companyId: uuid("company_id") // references() => companies.id
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  // Skill name
-  name: varchar("name", { length: 100 }).notNull(),
-
-  // Timestamps
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .default(sql`NOW()`)
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .default(sql`NOW()`)
-    .notNull(),
-}, (table) => {
-  return {
-    // Unique constraint on name
-    nameUniqueIdx: uniqueIndex("skills_name_unique").on(table.name),
-  };
-});
+  id: serial().primaryKey().notNull(),
+  companyId: uuid("company_id").notNull(),
+  name: varchar({ length: 100 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
+  foreignKey({
+    columns: [table.companyId],
+    foreignColumns: [companies.id],
+    name: "skills_company_id_companies_id_fk"
+  }).onDelete("cascade"),
+]);

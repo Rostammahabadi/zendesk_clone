@@ -53,6 +53,7 @@
     "@sentry/tracing": "^7.120.3",
     "@sentry/vite-plugin": "^3.0.0",
     "@supabase/supabase-js": "^2.48.0",
+    "@tanstack/react-query": "^5.64.2",
     "@types/draft-js": "^0.11.18",
     "babel-polyfill": "^6.26.0",
     "class-variance-authority": "^0.7.1",
@@ -85,6 +86,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@tanstack/eslint-plugin-query": "^5.64.2",
     "@testing-library/jest-dom": "^6.1.6",
     "@testing-library/react": "^14.1.2",
     "@types/jest": "^29.5.11",

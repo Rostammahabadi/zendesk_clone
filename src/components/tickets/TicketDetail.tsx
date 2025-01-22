@@ -9,25 +9,13 @@ import {
   X,
   History,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
-import { Ticket, TicketEvent, TicketMessage, formatTicketMessage } from '../../types/ticket';
-import { ticketService } from '../../services/ticketService';
-import { supabase } from '../../lib/supabaseClient';
 import { RichTextEditor } from "../ui/RichTextEditor";
-
-interface User {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: 'admin' | 'agent' | 'customer';
-  company_id: string;
-  full_name?: string;
-}
+import { useTicket, useUpdateTicket, useAddTicketMessage } from "../../hooks/queries/useTickets";
 
 const statusOptions = ['open', 'pending', 'closed'];
 const priorityOptions = ['low', 'medium', 'high'];
@@ -35,180 +23,75 @@ const topicOptions = ['support', 'billing', 'technical'];
 const typeOptions = ['question', 'problem', 'feature_request'];
 
 export function TicketDetail() {
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [publicMessages, setPublicMessages] = useState<TicketMessage[]>([]);
-  const [internalNotes, setInternalNotes] = useState<TicketMessage[]>([]);
-  const [events, setEvents] = useState<TicketEvent[]>([]);
-  const { ticketId, role } = useParams();
+  const { ticketId = '', role } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [internalNote, setInternalNote] = useState("");
-  const [showMacros] = useState(false);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchTicketData = async () => {
-      if (!ticketId) return;
-      
-      try {
-        setIsLoading(true);
-        const [ticketData, eventsData, messagesData] = await Promise.all([
-          ticketService.fetchTicket(ticketId),
-          ticketService.fetchTicketEvents(ticketId),
-          ticketService.fetchTicketMessages(ticketId)
-        ]);
-
-        setTicket(ticketData);
-        setEvents(eventsData);
-        setPublicMessages(messagesData.filter(msg => msg.message_type === 'public'));
-        setInternalNotes(messagesData.filter(msg => msg.message_type === 'internal_note'));
-      } catch (error) {
-        console.error('Error fetching ticket:', error);
-        toast.error('Failed to load ticket details');
-        navigate(`/${role}/dashboard/tickets`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTicketData();
-
-    // Set up realtime subscriptions
-    const ticketSubscription = supabase
-      .channel('ticket_changes')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'tickets',
-        filter: `id=eq.${ticketId}`
-      }, (payload) => {
-        setTicket(prev => prev ? { ...prev, ...payload.new } : null);
-      })
-      .subscribe();
-
-    const eventsSubscription = supabase
-      .channel('ticket_events')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'ticket_events',
-        filter: `ticket_id=eq.${ticketId}`
-      }, (payload) => {
-        setEvents(prev => [...prev, payload.new as TicketEvent]);
-      })
-      .subscribe();
-
-    const messagesSubscription = supabase
-      .channel('ticket_messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'ticket_messages',
-        filter: `ticket_id=eq.${ticketId}`
-      }, async (payload) => {
-        const { data: senderData } = await supabase
-          .from('users')
-          .select('id, email, first_name, last_name, role, company_id')
-          .eq('id', payload.new.sender_id)
-          .single();
-          
-        const message = formatTicketMessage({ ...payload.new, sender: senderData });
-        if (message.message_type === 'public') {
-          setPublicMessages(prev => [...prev, message]);
-        } else {
-          setInternalNotes(prev => [...prev, message]);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      ticketSubscription.unsubscribe();
-      eventsSubscription.unsubscribe();
-      messagesSubscription.unsubscribe();
-    };
-  }, [ticketId, role]);
-
-  useEffect(() => {
-    if (!scrollableRef.current) return;
-    const container = scrollableRef.current;
-    container.scrollTop = container.scrollHeight;
-  }, [events]);
+  const { data: ticket, isLoading } = useTicket(ticketId);
+  const { mutate: updateTicket } = useUpdateTicket();
+  const { mutate: addMessage } = useAddTicketMessage();
 
   const handleBack = () => {
     navigate(`/${role}/dashboard/tickets`);
   };
 
-  const handleFieldUpdate = async (field: keyof Ticket, value: any) => {
+  const handleFieldUpdate = async (field: string, value: any) => {
     if (!ticket) return;
 
-    try {
-      await ticketService.updateTicketField(ticket.id, field, value);
-      setTicket(prev => prev ? { ...prev, [field]: value } : null);
-      toast.success(`Updated ${field} successfully`);
-    } catch (error) {
-      console.error(`Error updating ${field}:`, error);
-      toast.error(`Failed to update ${field}`);
-    }
+    updateTicket({ ticketId: ticket.id, field, value }, {
+      onSuccess: () => {
+        toast.success(`Updated ${field} successfully`);
+      },
+      onError: (error) => {
+        console.error(`Error updating ${field}:`, error);
+        toast.error(`Failed to update ${field}`);
+      }
+    });
   };
 
   const handleSubmitComment = async () => {
     if (!message.trim() || !ticket || !user) return;
 
-    try {
-      await ticketService.addTicketMessage(ticket.id, user.id, message, 'public');
-      toast.success('Comment added successfully');
-      setMessage('');
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
-    }
+    addMessage({ ticketId: ticket.id, message, type: 'public' }, {
+      onSuccess: () => {
+        toast.success('Comment added successfully');
+        setMessage('');
+      },
+      onError: (error) => {
+        console.error('Error adding comment:', error);
+        toast.error('Failed to add comment');
+      }
+    });
   };
 
   const handleAddInternalNote = async () => {
     if (!internalNote.trim() || !ticket || !user) return;
 
-    try {
-      await ticketService.addTicketMessage(ticket.id, user.id, internalNote, 'internal_note');
-      toast.success('Internal note added successfully');
-      setInternalNote('');
-    } catch (error) {
-      console.error('Error adding internal note:', error);
-      toast.error('Failed to add internal note');
-    }
+    addMessage({ ticketId: ticket.id, message: internalNote, type: 'internal_note' }, {
+      onSuccess: () => {
+        toast.success('Internal note added successfully');
+        setInternalNote('');
+      },
+      onError: (error) => {
+        console.error('Error adding internal note:', error);
+        toast.error('Failed to add internal note');
+      }
+    });
   };
 
-  const getEventDescription = (event: TicketEvent) => {
+  const getEventDescription = (event: any) => {
     switch (event.event_type) {
-      case 'created':
-        return 'Ticket created';
-      case 'updated_description':
-        return 'Description updated';
-      case 'comment_added':
-        return 'Comment added';
-      case 'assigned':
-        return `Assigned to ${event.new_value}`;
-      case 'priority_changed':
-        return `Priority changed from ${event.old_value} to ${event.new_value}`;
-      case 'topic_changed':
-        return `Topic changed from ${event.old_value} to ${event.new_value}`;
-      case 'type_changed':
-        return `Type changed from ${event.old_value} to ${event.new_value}`;
-      case 'tags_added':
-        return `Tags added: ${event.new_value}`;
-      case 'tags_removed':
-        return `Tags removed: ${event.old_value}`;
-      case 'status_changed':
-        return `Status changed from ${event.old_value} to ${event.new_value}`;
-      case 'closed':
-        return 'Ticket closed';
-      case 'reopened':
-        return 'Ticket reopened';
-      case 'merged':
-        return `Merged with ticket ${event.new_value}`;
+      case 'status':
+        return `Status changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'priority':
+        return `Priority changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'assigned_to':
+        return `Assignment changed from ${event.old_value || 'unassigned'} to ${event.new_value || 'unassigned'}`;
       default:
-        return 'Unknown event';
+        return `${event.event_type} updated`;
     }
   };
 
@@ -349,7 +232,7 @@ export function TicketDetail() {
           {/* Messages Thread */}
           <div className="flex-1 flex flex-col h-[calc(100vh-200px)]">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {publicMessages.map(message => (
+              {ticket.messages.filter(m => m.message_type === 'public').map(message => (
                 <div key={message.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
@@ -373,32 +256,20 @@ export function TicketDetail() {
                 </div>
               ))}
             </div>
-            {/* Reply Box */}
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <RichTextEditor
                 initialContent={message}
-                onChange={(value) => setMessage(value)}
-                placeholder="Type your reply..."
+                onChange={setMessage}
+                placeholder="Type your message..."
                 className="min-h-[100px]"
               />
-              <div className="flex justify-between items-center mt-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={internalNote.trim() !== ''}
-                    onChange={(e) => setInternalNote(e.target.checked ? 'Internal note' : '')}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                    Internal Note
-                  </span>
-                </label>
+              <div className="mt-2 flex justify-end">
                 <button
                   onClick={handleSubmitComment}
                   disabled={!message.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Send
+                  Send Message
                 </button>
               </div>
             </div>
@@ -408,6 +279,24 @@ export function TicketDetail() {
             <div className="p-4">
               <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
               <div className="space-y-4">
+                {ticket.messages.filter(m => m.message_type === 'internal_note').map(note => (
+                  <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm">
+                          {note.sender?.full_name?.[0] || '?'}
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {note.sender?.full_name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(note.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
+                  </div>
+                ))}
                 <textarea
                   value={internalNote}
                   onChange={(e) => setInternalNote(e.target.value)}
@@ -426,34 +315,11 @@ export function TicketDetail() {
                 >
                   Add Note
                 </button>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {internalNotes.map((note) => (
-                    <div key={note.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${note.sender.email}`}
-                          alt={note.sender.full_name}
-                          className="w-6 h-6 rounded-full"
-                        />
-                        <span className="font-medium text-sm text-gray-900 dark:text-white">
-                          {note.sender.full_name}
-                        </span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">·</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">
-                          {new Date(note.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {note.body}
-                      </p>
-                    </div>
-                  ))}
-                </div>
               </div>
               <div className="mt-6">
                 <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Activity History</h3>
                 <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800" ref={scrollableRef}>
-                  {events.map((event) => (
+                  {ticket.events.map((event) => (
                     <div key={event.id} className="text-sm">
                       <div className="flex items-center text-gray-500 dark:text-gray-400">
                         <History className="w-4 h-4 mr-1 flex-shrink-0" />

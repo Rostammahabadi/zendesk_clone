@@ -1,15 +1,17 @@
-import { Search, Bell, User, LogOut, Moon, Sun, Plus } from "lucide-react";
+import {  Bell, User, LogOut, Moon, Sun, Plus } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useDarkMode } from "../context/DarkModeContext";
 import { NewTicketModal } from './tickets/NewTicketModal';
+import { useAuth } from "../hooks/useAuth";
 
 export function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
+  const { userData } = useAuth();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -24,14 +26,16 @@ export function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Create Ticket Button */}
-          <button
-            onClick={() => setIsNewTicketModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors duration-200 shadow-sm hover:shadow-md"
-          >
-            <Plus className="h-4 w-4" />
-            Create Ticket
-          </button>
+          {/* Create Ticket Button - Only show if not admin */}
+          {userData?.role !== 'admin' && (
+            <button
+              onClick={() => setIsNewTicketModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors duration-200 shadow-sm hover:shadow-md"
+            >
+              <Plus className="h-4 w-4" />
+              Create Ticket
+            </button>
+          )}
 
           {/* Dark Mode Toggle */}
           <button
