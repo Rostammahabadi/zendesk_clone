@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { defineConfig as defineVitestConfig } from 'vitest/config'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineVitestConfig(defineConfig({
@@ -33,5 +34,10 @@ export default defineVitestConfig(defineConfig({
         'src/lib/*',
       ],
     },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      inject: [path.resolve(__dirname, 'src/lib/polyfill.ts')]
+    }
   }
 }))

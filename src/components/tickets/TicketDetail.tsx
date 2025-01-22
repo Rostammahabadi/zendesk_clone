@@ -7,15 +7,6 @@ import {
   MessageSquare,
   Clock,
   X,
-  Paperclip,
-  Smile,
-  Link,
-  Bold,
-  Italic,
-  AlignLeft,
-  List,
-  ListOrdered,
-  Send,
   History,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -26,6 +17,7 @@ import { TagInput } from "../ui/TagInput";
 import { Ticket, TicketEvent, TicketMessage, formatTicketMessage } from '../../types/ticket';
 import { ticketService } from '../../services/ticketService';
 import { supabase } from '../../lib/supabaseClient';
+import { RichTextEditor } from "../ui/RichTextEditor";
 
 interface User {
   id: string;
@@ -382,83 +374,32 @@ export function TicketDetail() {
               ))}
             </div>
             {/* Reply Box */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
-              <div className="relative">
-                <div className="border dark:border-gray-700 rounded-lg">
-                  {/* Toolbar */}
-                  <div className="flex items-center space-x-2 border-b dark:border-gray-700 p-2">
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                      <Bold className="w-4 h-4" />
-                    </button>
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                      <Italic className="w-4 h-4" />
-                    </button>
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                      <AlignLeft className="w-4 h-4" />
-                    </button>
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                      <ListOrdered className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your reply..."
-                    className="w-full p-3 focus:outline-none resize-none bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                    rows={4}
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <RichTextEditor
+                initialContent={message}
+                onChange={(value) => setMessage(value)}
+                placeholder="Type your reply..."
+                className="min-h-[100px]"
+              />
+              <div className="flex justify-between items-center mt-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={internalNote.trim() !== ''}
+                    onChange={(e) => setInternalNote(e.target.checked ? 'Internal note' : '')}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500"
                   />
-                  <div className="flex items-center justify-between p-2 border-t dark:border-gray-700">
-                    <div className="flex items-center space-x-2">
-                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
-                        <Paperclip className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
-                        <Smile className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
-                        <Link className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleSubmitComment}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send
-                    </button>
-                  </div>
-                </div>
-                {/* Macro Button */}
-                <div className="absolute bottom-full mb-2">
-                  <div className="relative">
-                    {/* <button
-                      onClick={() => setShowMacros(!showMacros)}
-                      className="flex items-center space-x-2 px-3 py-1.5 border rounded-lg hover:bg-gray-50"
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span>Apply Macro</span>
-                      <ChevronDown className="w-4 h-4" />
-                    </button> */}
-                    {showMacros && (
-                      <div className="absolute left-0 bottom-full mb-1 w-64 bg-white border rounded-lg shadow-lg p-2">
-                        <div className="space-y-1">
-                          <button className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">
-                            Greeting Template
-                          </button>
-                          <button className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">
-                            Payment Issue Response
-                          </button>
-                          <button className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">
-                            Technical Support
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                    Internal Note
+                  </span>
+                </label>
+                <button
+                  onClick={handleSubmitComment}
+                  disabled={!message.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg disabled:opacity-50"
+                >
+                  Send
+                </button>
               </div>
             </div>
           </div>

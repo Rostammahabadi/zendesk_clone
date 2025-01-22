@@ -20,6 +20,7 @@
     "db:studio": "npx drizzle-kit studio"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -52,10 +53,13 @@
     "@sentry/tracing": "^7.120.3",
     "@sentry/vite-plugin": "^3.0.0",
     "@supabase/supabase-js": "^2.48.0",
+    "@types/draft-js": "^0.11.18",
+    "babel-polyfill": "^6.26.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "config": "^3.3.12",
+    "draft-js": "^0.11.7",
     "drizzle-orm": "^0.38.4",
     "embla-carousel-react": "^8.5.2",
     "get": "^1.4.0",
