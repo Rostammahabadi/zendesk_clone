@@ -33,6 +33,42 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         view: "home",
         path: `/${role}/dashboard`,
       },
+    ];
+
+    // Add admin-specific items
+    if (role === 'admin') {
+      return [
+        ...baseItems,
+        {
+          icon: BarChart2,
+          label: "Analytics",
+          view: "analytics",
+          path: `/${role}/dashboard/analytics`,
+        },
+        {
+          icon: Users,
+          label: "Agents",
+          view: "agents",
+          path: `/${role}/dashboard/agents`,
+        },
+        {
+          icon: Users,
+          label: "Customers",
+          view: "customers",
+          path: `/${role}/dashboard/customers`,
+        },
+        {
+          icon: Settings,
+          label: "Settings",
+          view: "settings",
+          path: `/${role}/dashboard/settings`,
+        },
+      ];
+    }
+
+    // Non-admin items
+    return [
+      ...baseItems,
       {
         icon: InboxIcon,
         label: "Tickets",
@@ -52,27 +88,6 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         path: `/${role}/dashboard/help`,
       },
     ];
-
-    // Add admin-specific items
-    if (role === 'admin') {
-      return [
-        ...baseItems,
-        {
-          icon: Users,
-          label: "Customers",
-          view: "customers",
-          path: `/${role}/dashboard/customers`,
-        },
-        {
-          icon: BarChart2,
-          label: "Analytics",
-          view: "analytics",
-          path: `/${role}/dashboard/analytics`,
-        },
-      ];
-    }
-
-    return baseItems;
   };
 
   const navItems = getNavItems(userRole);
