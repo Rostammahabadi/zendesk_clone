@@ -71,6 +71,13 @@
       "when": 1737478884093,
       "tag": "0009_pink_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1737551390329,
+      "tag": "0010_deep_arachne",
+      "breakpoints": true
     }
   ]
 }

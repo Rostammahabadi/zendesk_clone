@@ -10,6 +10,7 @@ import { SettingsPage } from '../components/settings/SettingsPage';
 import { HelpCenter } from '../components/help/HelpCenter';
 import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { TicketDetail } from '../components/tickets/TicketDetail';
+import { TeamPage } from '../components/teams/TeamPage';
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
                 element: <TicketDetail />,
               }
             ]
+          },
+          {
+            path: 'teams',
+            element: <TeamPage />,
           },
           {
             path: 'customers',

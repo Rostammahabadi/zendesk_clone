@@ -53,6 +53,12 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         },
         {
           icon: Users,
+          label: "Teams",
+          view: "teams",
+          path: `/${role}/dashboard/teams`,
+        },
+        {
+          icon: Users,
           label: "Customers",
           view: "customers",
           path: `/${role}/dashboard/customers`,
