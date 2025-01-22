@@ -9,6 +9,10 @@ export const useTickets = () => {
   return useQuery({
     queryKey: ['tickets', userData?.company_id, userData?.role],
     queryFn: async () => {
+      if (!userData?.company_id) {
+        return [];
+      }
+
       let query = supabase
         .from('tickets')
         .select(`
@@ -43,10 +47,17 @@ export const useTickets = () => {
       }
 
       const { data, error } = await query
-        .eq('company_id', userData?.company_id)
+        .eq('company_id', userData.company_id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tickets:', error);
+        throw error;
+      }
+
+      if (!data) {
+        return [];
+      }
 
       return data.map(ticket => ({
         id: ticket.id,
@@ -57,13 +68,15 @@ export const useTickets = () => {
         created_at: ticket.created_at,
         updated_at: ticket.updated_at,
         companyId: ticket.company_id,
-        created_by: formatUser(ticket.created_by),
+        created_by: ticket.created_by ? formatUser(ticket.created_by) : null,
         assigned_to: ticket.assigned_to ? formatUser(ticket.assigned_to) : null,
         topic: null,
         type: null
       })) as Ticket[];
     },
     enabled: !!userData?.company_id,
+    staleTime: 30000, // Cache data for 30 seconds
+    retry: 3, // Retry failed requests 3 times
   });
 };
 

@@ -119,7 +119,6 @@ export const useUpdateTeam = () => {
       teamId: string; 
       data: { name?: string; memberIds?: string[] } 
     }) => {
-      const updates = [];
 
       if (data.name) {
         const { error: nameError } = await supabase

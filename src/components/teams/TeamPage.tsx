@@ -102,8 +102,8 @@ const teams = [
 ];
 
 export function TeamPage() {
-  const { user, userData, isLoading } = useAuth();
-  const [teamUserGroups, setTeamUserGroups] = useState<TeamUserGroup[]>([]);
+  const { userData } = useAuth();
+  const [_,  setTeamUserGroups] = useState<TeamUserGroup[]>([]);
   const [isNewTeamModalOpen, setIsNewTeamModalOpen] = useState(false);
 
   useEffect(() => {

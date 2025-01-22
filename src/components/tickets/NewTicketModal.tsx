@@ -6,6 +6,7 @@ import { Dialog } from "@headlessui/react";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import { useCreateTicket } from "../../hooks/queries/useTickets";
 import { useAgents } from "../../hooks/queries/useUsers";
+import { User } from "../../types/user";
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
     topic: "support" as TicketTopic,
     type: "question" as TicketType,
     assigned_to: null as string | null,
+    company_id: userData?.company_id || null,
+    created_by: userData?.id || null,
   });
 
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
@@ -35,7 +38,11 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    createTicket(formData, {
+    createTicket({
+      ...formData,
+      assigned_to: formData.assigned_to ? { id: formData.assigned_to } as User : null,
+      created_by: formData.created_by ? { id: formData.created_by } as User : undefined
+    }, {
       onSuccess: () => {
         toast.success("Ticket created successfully");
         setFormData({
@@ -46,6 +53,8 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
           topic: "support" as TicketTopic,
           type: "question" as TicketType,
           assigned_to: null,
+          company_id: userData?.company_id || null,
+          created_by: userData?.id || null,
         });
         onClose();
       },
@@ -168,7 +177,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                   <option value="">Unassigned</option>
                   {agents.map((agent) => (
                     <option key={agent.id} value={agent.id}>
-                      {agent.full_name}
+                      {agent.first_name} {agent.last_name}
                     </option>
                   ))}
                 </select>

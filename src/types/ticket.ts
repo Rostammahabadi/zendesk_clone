@@ -53,6 +53,8 @@ export interface Ticket {
   created_by?: User;
   assigned_to?: User | null;
   tags?: Tag[];
+  messages?: TicketMessage[];
+  events?: TicketEvent[];
 }
 
 export type TicketStatus = 'open' | 'pending' | 'closed';

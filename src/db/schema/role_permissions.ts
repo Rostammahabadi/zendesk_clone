@@ -1,4 +1,4 @@
-import { bigint, pgEnum, pgTable, varchar, unique } from "drizzle-orm/pg-core";
+import { bigint, pgEnum, pgTable, unique } from "drizzle-orm/pg-core";
 
 export const appRole = pgEnum("app_role", ['admin', 'agent', 'customer'])
 

@@ -21,7 +21,7 @@ const statusOptions = ['open', 'pending', 'closed'];
 const priorityOptions = ['low', 'medium', 'high'];
 const topicOptions = ['support', 'billing', 'technical'];
 const typeOptions = ['question', 'problem', 'feature_request'];
-
+type UpdatableTicketField = 'type' | 'priority' | 'assigned_to' | 'status' | 'tags' | 'topic';
 export function TicketDetail() {
   const { ticketId = '', role } = useParams();
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ export function TicketDetail() {
     navigate(`/${role}/dashboard/tickets`);
   };
 
-  const handleFieldUpdate = async (field: string, value: any) => {
+  const handleFieldUpdate = async (field: UpdatableTicketField, value: any) => {
     if (!ticket) return;
 
     updateTicket({ ticketId: ticket.id, field, value }, {
@@ -232,7 +232,7 @@ export function TicketDetail() {
           {/* Messages Thread */}
           <div className="flex-1 flex flex-col h-[calc(100vh-200px)]">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {ticket.messages.filter(m => m.message_type === 'public').map(message => (
+              {ticket.messages?.filter(m => m.message_type === 'public').map(message => (
                 <div key={message.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
@@ -279,7 +279,7 @@ export function TicketDetail() {
             <div className="p-4">
               <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
               <div className="space-y-4">
-                {ticket.messages.filter(m => m.message_type === 'internal_note').map(note => (
+                {ticket.messages?.filter(m => m.message_type === 'internal_note').map(note => (
                   <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
@@ -319,7 +319,7 @@ export function TicketDetail() {
               <div className="mt-6">
                 <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Activity History</h3>
                 <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800" ref={scrollableRef}>
-                  {ticket.events.map((event) => (
+                  {ticket.events?.map((event) => (
                     <div key={event.id} className="text-sm">
                       <div className="flex items-center text-gray-500 dark:text-gray-400">
                         <History className="w-4 h-4 mr-1 flex-shrink-0" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Editor, EditorState, RichUtils, convertToRaw, convertFromRaw, DraftHandleValue } from 'draft-js';
 import 'draft-js/dist/Draft.css';
 import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
