@@ -1,6 +1,7 @@
 import { Search, X } from "lucide-react";
 import { useState } from "react";
 import { useCompanyUsers } from "../../hooks/queries/useUsers";
+import { User } from "../../types/user";
 
 interface SelectUsersModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface SelectUsersModalProps {
   onConfirm: (selectedUserIds: string[]) => void;
   selectedUserIds?: string[];
   title?: string;
+  currentTeamMembers?: User[];
 }
 
 export function SelectUsersModal({
@@ -15,18 +17,25 @@ export function SelectUsersModal({
   onClose,
   onConfirm,
   selectedUserIds = [],
-  title = "Select Users"
+  title = "Select Users",
+  currentTeamMembers = []
 }: SelectUsersModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selected, setSelected] = useState<string[]>(selectedUserIds);
   const { data: users, isLoading: isLoadingUsers } = useCompanyUsers();
 
-  const filteredUsers = users?.filter(
+  // Filter users to only include agents who are not already on the team
+  const availableAgents = users?.filter(user => 
+    user.role === 'agent' && 
+    !currentTeamMembers.some(member => member.id === user.id)
+  ) ?? [];
+
+  const filteredUsers = availableAgents.filter(
     (user) =>
       (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.first_name && user.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) ?? [];
+  );
 
   const toggleUser = (userId: string) => {
     setSelected(prev => 
@@ -64,7 +73,7 @@ export function SelectUsersModal({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search agents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-neutral-300 pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-50"
@@ -75,6 +84,10 @@ export function SelectUsersModal({
             {isLoadingUsers ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-4 text-neutral-500 dark:text-neutral-400">
+                No available agents found
               </div>
             ) : (
               filteredUsers.map((user) => (
@@ -100,9 +113,6 @@ export function SelectUsersModal({
                       {user.email}
                     </p>
                   </div>
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {user.role}
-                  </span>
                 </div>
               ))
             )}

@@ -23,7 +23,7 @@ export function TeamPage() {
   const [editingName, setEditingName] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; teamId: string; teamName: string; } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-  const [addMembersModal, setAddMembersModal] = useState<{ isOpen: boolean; teamId: string; teamName: string; } | null>(null);
+  const [addMembersModal, setAddMembersModal] = useState<{ isOpen: boolean; teamId: string; teamName: string; currentTeamMembers: any[]; } | null>(null);
   
   const { data: teamUserGroups, isLoading } = useTeamUserGroups();
   const { mutate: updateTeam } = useUpdateTeam();
@@ -256,7 +256,8 @@ export function TeamPage() {
                       onClick={() => setAddMembersModal({ 
                         isOpen: true, 
                         teamId: team.team_id, 
-                        teamName: team.team_name 
+                        teamName: team.team_name,
+                        currentTeamMembers: team.users || []
                       })}
                       className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center"
                     >
@@ -304,6 +305,7 @@ export function TeamPage() {
           onClose={() => setAddMembersModal(null)}
           onConfirm={handleAddMembers}
           title={`Add Members to ${addMembersModal?.teamName}`}
+          currentTeamMembers={addMembersModal?.currentTeamMembers}
         />
       </div>
     </div>

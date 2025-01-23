@@ -33,6 +33,9 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
   const { data: users, isLoading: isLoadingUsers } = useCompanyUsers();
   const { mutate: createTeam, isPending: isCreating } = useCreateTeam();
 
+  // Filter users to only include agents
+  const agentUsers = users?.filter(user => user.role === 'agent') ?? [];
+
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -46,12 +49,12 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
     }
   }, [isOpen]);
 
-  const filteredUsers = users?.filter(
+  const filteredUsers = agentUsers.filter(
     (user) =>
       (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.first_name && user.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) ?? [];
+  );
 
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
