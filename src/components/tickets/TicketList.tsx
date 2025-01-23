@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { NewTicketModal } from "./NewTicketModal";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTickets } from "../../hooks/queries/useTickets";
-import { ChevronDown, ChevronUp, Filter, ArrowUpDown, Search, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronUp, ArrowUpDown, Search } from "lucide-react";
 
 interface SortConfig {
   field: string;

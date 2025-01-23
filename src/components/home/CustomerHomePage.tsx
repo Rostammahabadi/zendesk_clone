@@ -5,11 +5,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Plus,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
-import { useState } from "react";
-import { CreateTicketFlow } from "../tickets/CreateTicketFlow";
 
 const ticketStats = [
   {

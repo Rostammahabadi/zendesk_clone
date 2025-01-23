@@ -3,7 +3,6 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertCircle,
-  Upload,
   User,
   Mail,
   Phone,
