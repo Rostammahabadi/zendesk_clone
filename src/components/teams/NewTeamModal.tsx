@@ -99,9 +99,9 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
     
     setFormData((prev) => ({
       ...prev,
-      members: prev.members.find(m => m.id === userId)
+      members: prev.members.some(m => m.id === userId)
         ? prev.members.filter(m => m.id !== userId)
-        : [...prev.members, userToAdd]
+        : [...prev.members, userToAdd as User]
     }));
   };
 
@@ -199,7 +199,7 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
                   filteredUsers.map((user) => (
                     <div
                       key={user.id}
-                      onClick={() => toggleMember(user.id)}
+                      onClick={() => toggleMember(user.id ?? '')}
                       className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
                         formData.members.some(member => member.id === user.id)
                           ? "bg-indigo-50 border border-indigo-500 dark:bg-indigo-800/30 dark:border-indigo-600"

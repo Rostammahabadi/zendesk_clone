@@ -83,7 +83,6 @@ export function TicketDetail() {
         }
       )
       .subscribe();
-
     return () => {
       subscription.unsubscribe();
       eventsSubscription.unsubscribe();
@@ -167,18 +166,35 @@ export function TicketDetail() {
     }
   };
 
-  // const getEventDescription = (event: any) => {
-  //   switch (event.event_type) {
-  //     case 'status':
-  //       return `Status changed from ${event.old_value || 'none'} to ${event.new_value}`;
-  //     case 'priority':
-  //       return `Priority changed from ${event.old_value || 'none'} to ${event.new_value}`;
-  //     case 'assigned_to':
-  //       return `Assignment changed from ${event.old_value || 'unassigned'} to ${event.new_value || 'unassigned'}`;
-  //     default:
-  //       return `${event.event_type} updated`;
-  //   }
-  // };
+  const getEventDescription = (event: any) => {
+    switch (event.event_type) {
+      case 'status_changed':
+        return `Status changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'priority_changed':
+        return `Priority changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'assigned_to_changed':
+        return `Assignment changed from ${event.old_value || 'unassigned'} to ${event.new_value || 'unassigned'}`;
+      case 'type_changed':
+        return `Type changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'topic_changed':
+        return `Topic changed from ${event.old_value || 'none'} to ${event.new_value}`;
+      case 'tags_updated':
+        return `Tags updated`;
+      default:
+        return `${event.event_type} updated`;
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
 
   if (isLoading) {
     return (
@@ -208,7 +224,7 @@ export function TicketDetail() {
     <div className="h-full bg-gray-50 dark:bg-gray-900">
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center text-gray-900 dark:text-white">
               <span className="mr-2">#{ticket.id}</span>
@@ -316,8 +332,9 @@ export function TicketDetail() {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Messages Thread */}
-          <div className={`flex-1 flex flex-col h-[calc(100vh-200px)] ${!isAgent ? 'lg:border-r-0' : ''}`}>
+          <div className={`flex-1 flex flex-col ${!isAgent ? 'lg:border-r-0' : ''}`}>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Messages */}
               {ticket.messages?.filter(m => m.message_type === 'public').map(message => (
                 <div key={message.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -331,7 +348,7 @@ export function TicketDetail() {
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {new Date(message.created_at).toLocaleString()}
+                          {formatDate(message.created_at)}
                         </div>
                       </div>
                     </div>
@@ -343,7 +360,7 @@ export function TicketDetail() {
               ))}
               <div ref={messagesEndRef} />
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
               <RichTextEditor
                 initialContent={message}
                 onChange={setMessage}
@@ -363,47 +380,78 @@ export function TicketDetail() {
               </div>
             </div>
           </div>
-          {/* Right Sidebar - Internal Notes */}
+          {/* Right Sidebar - Internal Notes & Events */}
           {isAgent && (
-            <div className="hidden lg:block w-80 border-l border-gray-200 dark:border-gray-700 overflow-auto bg-white dark:bg-gray-800">
-              <div className="p-4">
-                <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
-                <div className="space-y-4">
-                  {ticket.messages?.filter(m => m.message_type === 'internal_note').map(note => (
-                    <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm">
-                            {note.sender?.full_name?.[0] || '?'}
+            <div className="overflow-hidden lg:block w-80 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
+              {/* Internal Notes Section */}
+              <div className="flex-1 overflow-auto">
+                <div className="p-4">
+                  <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
+                  <div className="space-y-4">
+                    {ticket.messages?.filter(m => m.message_type === 'internal_note').map(note => (
+                      <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm">
+                              {note.sender?.full_name?.[0] || '?'}
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {note.sender?.full_name}
+                            </span>
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {note.sender?.full_name}
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(note.created_at)}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(note.created_at).toLocaleString()}
-                        </span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
-                    </div>
-                  ))}
-                  <RichTextEditor
-                    initialContent={internalNote}
-                    onChange={setInternalNote}
-                    onKeyPress={(e) => handleKeyPress(e, 'internal_note')}
-                    placeholder="Add an internal note..."
-                    className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
-                    clearContent={clearInternalNote}
-                  />
-                  <button 
-                    onClick={handleAddInternalNote}
-                    disabled={!internalNote.trim()}
-                    className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 
-                      rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 
-                      disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Add Note
-                  </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Note Input Section */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <RichTextEditor
+                  initialContent={internalNote}
+                  onChange={setInternalNote}
+                  onKeyPress={(e) => handleKeyPress(e, 'internal_note')}
+                  placeholder="Add an internal note..."
+                  className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
+                  clearContent={clearInternalNote}
+                />
+                <button 
+                  onClick={handleAddInternalNote}
+                  disabled={!internalNote.trim()}
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 
+                    rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Note
+                </button>
+              </div>
+
+              {/* Ticket Events Section */}
+              <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div className="p-4">
+                  <h3 className="font-medium mb-4 text-gray-900 dark:text-white flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Event History
+                  </h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {ticket.events?.slice().reverse().map((event) => (
+                      <div key={event.id} className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-2">
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-sm text-gray-600 dark:text-gray-300">
+                            {getEventDescription(event)}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(event.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -209,7 +209,6 @@ export const useCreateTicket = () => {
 
 export const useUpdateTicket = () => {
   const queryClient = useQueryClient();
-  const { userData } = useAuth();
 
   return useMutation({
     mutationFn: async ({ 
@@ -227,18 +226,6 @@ export const useUpdateTicket = () => {
         .eq('id', ticketId);
 
       if (error) throw error;
-
-      // Create ticket event
-      const { error: eventError } = await supabase
-        .from('ticket_events')
-        .insert({
-          ticket_id: ticketId,
-          event_type: field,
-          new_value: value,
-          triggered_by: userData?.id,
-        });
-
-      if (eventError) throw eventError;
 
       return { ticketId, [field]: value };
     },
