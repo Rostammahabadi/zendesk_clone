@@ -34,13 +34,14 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
 
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
   const { mutate: createTicket, isPending: isCreating } = useCreateTicket();
+  const isAgent = userData?.role === 'agent' || userData?.role === 'admin';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     createTicket({
       ...formData,
-      assigned_to: formData.assigned_to ? { id: formData.assigned_to } as User : null,
+      assigned_to: !isAgent ? null : (formData.assigned_to ? { id: formData.assigned_to } as User : null),
       created_by: formData.created_by ? { id: formData.created_by } as User : undefined
     }, {
       onSuccess: () => {
@@ -148,40 +149,44 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as TicketStatus })}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Assign To
-                </label>
-                <select
-                  value={formData.assigned_to || ''}
-                  onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value || null })}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100"
-                  disabled={isLoadingAgents}
-                >
-                  <option value="">Unassigned</option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.first_name} {agent.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {isAgent && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as TicketStatus })}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100"
+                    >
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Assign To
+                    </label>
+                    <select
+                      value={formData.assigned_to || ''}
+                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value || null })}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100"
+                      disabled={isLoadingAgents}
+                    >
+                      <option value="">Unassigned</option>
+                      {agents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.first_name} {agent.last_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button

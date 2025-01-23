@@ -34,6 +34,7 @@ export function TicketDetail() {
   const [clearInternalNote, setClearInternalNote] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
+  const isAgent = role === 'agent' || role === 'admin';
 
   const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const { mutate: updateTicket } = useUpdateTicket();
@@ -234,7 +235,7 @@ export function TicketDetail() {
               <div className="flex items-center space-x-2">
                 <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Assignee:</span>
-                <select className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white">
+                <select disabled={role !== 'admin' && role !== 'agent'} className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white">
                   <option>{ticket.assigned_to?.full_name || 'Unassigned'}</option>
                 </select>
               </div>
@@ -299,6 +300,7 @@ export function TicketDetail() {
                 <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
                 <select
+                  disabled={role !== 'admin' && role !== 'agent'}
                   value={ticket?.status || 'open'}
                   onChange={(e) => handleFieldUpdate('status', e.target.value)}
                   className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
@@ -316,7 +318,7 @@ export function TicketDetail() {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Messages Thread */}
-          <div className="flex-1 flex flex-col h-[calc(100vh-200px)]">
+          <div className={`flex-1 flex flex-col h-[calc(100vh-200px)] ${!isAgent ? 'lg:border-r-0' : ''}`}>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {ticket.messages?.filter(m => m.message_type === 'public').map(message => (
                 <div key={message.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
@@ -363,68 +365,51 @@ export function TicketDetail() {
               </div>
             </div>
           </div>
-          {/* Right Sidebar */}
-          <div className="hidden lg:block w-80 border-l border-gray-200 dark:border-gray-700 overflow-auto bg-white dark:bg-gray-800">
-            <div className="p-4">
-              <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
-              <div className="space-y-4">
-                {ticket.messages?.filter(m => m.message_type === 'internal_note').map(note => (
-                  <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm">
-                          {note.sender?.full_name?.[0] || '?'}
+          {/* Right Sidebar - Internal Notes */}
+          {isAgent && (
+            <div className="hidden lg:block w-80 border-l border-gray-200 dark:border-gray-700 overflow-auto bg-white dark:bg-gray-800">
+              <div className="p-4">
+                <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Internal Notes</h3>
+                <div className="space-y-4">
+                  {ticket.messages?.filter(m => m.message_type === 'internal_note').map(note => (
+                    <div key={note.id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm">
+                            {note.sender?.full_name?.[0] || '?'}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {note.sender?.full_name}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {note.sender?.full_name}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(note.created_at).toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(note.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
-                  </div>
-                ))}
-                <RichTextEditor
-                  initialContent={internalNote}
-                  onChange={setInternalNote}
-                  onKeyPress={(e) => handleKeyPress(e, 'internal_note')}
-                  placeholder="Add an internal note..."
-                  className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
-                  clearContent={clearInternalNote}
-                />
-                <button 
-                  onClick={handleAddInternalNote}
-                  disabled={!internalNote.trim()}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 
-                    rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 
-                    disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Add Note
-                </button>
-              </div>
-              <div className="mt-6">
-                <h3 className="font-medium mb-4 text-gray-900 dark:text-white">Activity History</h3>
-                <div className="max-h-[400px] overflow-y-auto pr-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800" ref={scrollableRef}>
-                  {ticket.events?.map((event) => (
-                    <div key={event.id} className="text-sm">
-                      <div className="flex items-center text-gray-500 dark:text-gray-400">
-                        <History className="w-4 h-4 mr-1 flex-shrink-0" />
-                        <span>{new Date(event.created_at).toLocaleString()}</span>
-                      </div>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        {getEventDescription(event)}
-                        {event.triggered_by && (
-                          <span className="text-gray-500 dark:text-gray-400"> by {event.triggered_by.first_name} {event.triggered_by.last_name}</span>
-                        )}
-                      </p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
                     </div>
                   ))}
+                  <RichTextEditor
+                    initialContent={internalNote}
+                    onChange={setInternalNote}
+                    onKeyPress={(e) => handleKeyPress(e, 'internal_note')}
+                    placeholder="Add an internal note..."
+                    className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
+                    clearContent={clearInternalNote}
+                  />
+                  <button 
+                    onClick={handleAddInternalNote}
+                    disabled={!internalNote.trim()}
+                    className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 
+                      rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 
+                      disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add Note
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
