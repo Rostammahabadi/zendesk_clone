@@ -5,13 +5,39 @@ import {
   Plus,
 } from "lucide-react";
 import { AgentDetailsPanel } from "./AgentDetailPanel";
-import { useAgents, useAgent } from "../../hooks/queries/useAgents";
+import { useAgents, useAgent, useCreateAgent } from "../../hooks/queries/useAgents";
 import { useState } from "react";
+import { NewAgentModal } from "./NewAgentModal";
+import { useAuth } from "../../hooks/useAuth";
+import { toast } from "sonner";
 
 export function AgentsPage() {
   const { data: agents = [] } = useAgents();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const { data: selectedAgent } = useAgent(selectedAgentId || "");
+  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
+  const { userData } = useAuth();
+  const createAgent = useCreateAgent();
+
+  const handleCreateAgent = async (formData: any) => {
+    try {
+      await createAgent.mutateAsync({
+        email: formData.email,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        role: formData.role,
+        title: formData.title,
+        phone: formData.phoneNumber,
+        avatar_url: formData.avatarUrl,
+        company_id: userData?.company_id,
+      });
+      toast.success("Agent created successfully");
+      setIsNewAgentModalOpen(false);
+    } catch (error) {
+      toast.error("Failed to create agent");
+      console.error(error);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-auto">
@@ -20,7 +46,9 @@ export function AgentsPage() {
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
             Agents
           </h1>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+          <button 
+            onClick={() => setIsNewAgentModalOpen(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
             <Plus className="w-5 h-5 mr-2" />
             Add Agent
           </button>
@@ -122,6 +150,12 @@ export function AgentsPage() {
         agent={selectedAgent}
         isOpen={!!selectedAgentId}
         onClose={() => setSelectedAgentId(null)}
+      />
+
+      <NewAgentModal
+        isOpen={isNewAgentModalOpen}
+        onClose={() => setIsNewAgentModalOpen(false)}
+        onSubmit={handleCreateAgent}
       />
     </div>
   );

@@ -4,67 +4,19 @@
 
 @layer base {
   :root {
-    --background: 210 20% 99%;
-    --foreground: 210 20% 14%;
-
-    --muted: 210 10% 93%;
-    --muted-foreground: 210 7% 30%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 164 97% 32%;
-    --secondary-foreground: 0 0% 100%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --ring: 215 20.2% 65.1%;
-
-    --radius: 0.625rem;
+    --background: #FFFFFF;
+    --foreground: #1F2937;
+    --border: #E5E7EB;
+    --input: #D1D5DB;
+    --ring: #3B82F6;
   }
 
   .dark {
-    --background: 210 15% 15%;
-    --foreground: 210 15% 95%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-
-    --ring: 217.2 32.6% 17.5%;
+    --background: #111827;
+    --foreground: #F9FAFB;
+    --border: #374151;
+    --input: #4B5563;
+    --ring: #3B82F6;
   }
 }
 
@@ -72,7 +24,28 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
-} 
+}
+
+body {
+  @apply bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.card {
+  @apply bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6;
+}
+
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-primary-500 text-white hover:bg-primary-600;
+}

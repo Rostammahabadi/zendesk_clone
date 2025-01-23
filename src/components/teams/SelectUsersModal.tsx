@@ -37,7 +37,8 @@ export function SelectUsersModal({
       (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const toggleUser = (userId: string) => {
+  const toggleUser = (userId: string | undefined) => {
+    if (!userId) return;
     setSelected(prev => 
       prev.includes(userId)
         ? prev.filter(id => id !== userId)
@@ -95,7 +96,7 @@ export function SelectUsersModal({
                   key={user.id}
                   onClick={() => toggleUser(user.id)}
                   className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    selected.includes(user.id)
+                    selected.includes(user.id ?? '')
                       ? "bg-indigo-50 border border-indigo-500 dark:bg-indigo-800/30 dark:border-indigo-600"
                       : "bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700"
                   }`}

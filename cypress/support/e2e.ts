@@ -1,12 +1,18 @@
+/// <reference types="cypress" />
+
 // Import commands.js using ES2015 syntax:
 import './commands'
 
-// Augment Cypress namespace with custom commands
+// Alternatively you can use CommonJS syntax:
+// require('./commands')
+
+// Prevent TypeScript errors in test files
 declare global {
   namespace Cypress {
     interface Chainable {
-      // Add your custom commands here, for example:
-      // login(email: string, password: string): Chainable<void>
+      // Add custom commands here
+      login(email: string, password: string): Chainable<void>
+      // Add more custom commands as needed
     }
   }
 } 

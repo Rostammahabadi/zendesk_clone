@@ -94,11 +94,14 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
   };
 
   const toggleMember = (userId: string) => {
+    const userToAdd = users?.find(u => u.id === userId);
+    if (!userToAdd) return;
+    
     setFormData((prev) => ({
       ...prev,
       members: prev.members.find(m => m.id === userId)
         ? prev.members.filter(m => m.id !== userId)
-        : [...prev.members, users?.find(u => u.id === userId)!]
+        : [...prev.members, userToAdd]
     }));
   };
 

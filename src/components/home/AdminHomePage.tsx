@@ -115,7 +115,17 @@ export function AdminHomePage() {
       try {
         const { data: agentsData, error } = await supabase
           .from('users')
-          .select('id, email, first_name, last_name, role, company_id')
+          .select(`
+          *,
+          user_skills (
+            id,
+            proficiency,
+            skills (
+              id,
+              name
+            )
+          )
+        `)
           .eq('role', 'agent');
 
         if (error) throw error;

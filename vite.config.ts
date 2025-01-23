@@ -35,9 +35,7 @@ export default defineVitestConfig(defineConfig({
       ],
     },
   },
-  optimizeDeps: {
-    esbuildOptions: {
-      inject: [path.resolve(__dirname, 'src/lib/polyfill.ts')]
-    }
+  define: {
+    global: 'window'
   }
 }))

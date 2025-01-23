@@ -375,11 +375,17 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                 variant="outline"
                 onClick={() => setStep((prev) => (prev - 1) as Step)}
                 disabled={isLoading}
+                className="text-gray-700 hover:text-gray-900"
               >
                 Back
               </Button>
             )}
-            <Button onClick={handleNext} disabled={isLoading}>
+            <Button 
+              onClick={handleNext} 
+              disabled={isLoading}
+              variant="default"
+              className="bg-indigo-600 text-white hover:bg-indigo-700"
+            >
               {isLoading ? "Please wait..." : step === 3 ? "Complete Setup" : "Next"}
             </Button>
           </div>

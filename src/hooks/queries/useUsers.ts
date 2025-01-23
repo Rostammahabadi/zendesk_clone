@@ -12,7 +12,17 @@ export const useAgents = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select(`
+          *,
+          user_skills (
+            id,
+            proficiency,
+            skills (
+              id,
+              name
+            )
+          )
+        `)
         .eq('role', 'agent')
         .eq('company_id', userData?.company_id);
 

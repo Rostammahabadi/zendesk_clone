@@ -109,7 +109,7 @@ export const LoginPage = () => {
     setSuccessMessage(null)
     setIsLoading(true)
 
-    // Validate email
+    // Extra check for domain rules, if any
     const emailError = getEmailError(email)
     if (emailError) {
       setError(emailError)
@@ -119,131 +119,141 @@ export const LoginPage = () => {
 
     try {
       if (isSignUp) {
+        // ============ SIGNUP FLOW ============
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
-          }
+          },
         })
         if (error) throw error
-        
+
         setSuccessMessage('Check your email for the confirmation link!')
       } else {
-        const { data: { session }, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        // ============ SIGNIN FLOW ============
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         if (!session) throw new Error('No session established')
-        
-        // Verify authentication state
-        const { data: { user } } = await supabase.auth.getUser()
+
+        // Double-check we have a user
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
         if (!user) throw new Error('Authentication failed')
         if (!user.email) throw new Error('No email found for user')
 
-        // Extract domain and check for existing company
-        const emailDomain = user.email.split('@')[1]
-        const { data: existingCompany, error: companyError } = await supabase
+        // 1) Extract domain
+        const emailDomain = user.email.split('@')[1].toLowerCase()
+
+        // 2) Check for existing company
+        const {
+          data: existingCompany,
+          error: companyError,
+        } = await supabase
           .from('companies')
           .select('id, name')
           .eq('domain', emailDomain)
           .single()
 
+        // code PGRST116 => "Row not found" in PostgREST
         if (companyError && companyError.code !== 'PGRST116') {
           throw companyError
         }
 
-        // Check if user profile exists
-        const { data: userProfile, error: profileError } = await supabase
+        // 3) Check if we already have a user record in `users` table
+        const {
+          data: existingUserProfile,
+          error: profileError,
+        } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
-        
+
         if (profileError && profileError.code !== 'PGRST116') {
           throw profileError
         }
 
-        
-        // If company exists and user profile exists, they're already set up
-        if (existingCompany && user.user_metadata.role) {
-          // Navigate based on role
-          if (userProfile.role === 'agent') {
-            navigate('/agent/dashboard')
-          } else if (userProfile.role === 'admin') {
-            navigate('/admin/dashboard')
-          } else if (userProfile.role === 'customer') {
-            navigate('/customer/dashboard')
-          } else {
-            navigate('/dashboard')
-          }
+        // 4) If a user row already exists, go straight to their dashboard
+        if (existingUserProfile) {
+          handleNavigateByRole(existingUserProfile.role)
           return
         }
 
-        // If company exists but no profile, create profile and auto-join
-        if (existingCompany && !userProfile) {
-          const { data: newProfile, error: createProfileError } = await supabase
+        // 5) If userProfile does NOT exist:
+        if (existingCompany) {
+          // 5a) We found a company => create user row in `users` with that company_id
+          const {
+            data: newProfile,
+            error: createProfileError,
+          } = await supabase
             .from('users')
             .insert({
               id: user.id,
               email: user.email,
               company_id: existingCompany.id,
-              role: 'agent'
+              role: 'agent', // or any default role
             })
             .select()
             .single()
 
           if (createProfileError) throw createProfileError
 
-          setUserProfile(newProfile)
-
-          // Update user metadata with their role and company_id
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: { 
+          // Update user metadata so Supabase Auth knows their role & company too
+          const { error: metadataError } = await supabase.auth.updateUser({
+            data: {
               role: 'agent',
-              company_id: existingCompany.id
-            }
+              company_id: existingCompany.id,
+            },
           })
-          
-          if (updateError) throw updateError
+          if (metadataError) throw metadataError
 
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
-          navigate('/agent/dashboard')
-          return
-        } else if (!existingCompany && !userProfile) {
+          handleNavigateByRole(newProfile.role)
+        } else {
+          // 5b) No matching company => user *must* create one.
+          // Because your schema requires company_id (NOT NULL) for any user,
+          // we cannot insert a user row yet. So we:
+          //  - Mark them as 'admin' in metadata (so they have permissions to create the company).
+          //  - Show the "signup walkthrough" for company creation.
           const { error: updateError } = await supabase.auth.updateUser({
-            data: { role: 'admin' }  // or 'agent', 'customer', etc.
+            data: { role: 'admin' },
           })
           if (updateError) throw updateError
-        } else if (existingCompany && userProfile) {
-          if (userProfile.role === 'agent') {
-            navigate('/agent/dashboard')
-          } else if (userProfile.role === 'admin') {
-            navigate('/admin/dashboard')
-          } else if (userProfile.role === 'customer') {
-            navigate('/customer/dashboard')
-          } else {
-            navigate('/dashboard')
-          }
+
+          setUserProfile({
+            id: user.id,
+            email: user.email,
+            first_name: null,
+            last_name: null,
+            role: 'admin',
+            company_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          setShowWalkthrough(true)
         }
-          // If no company exists, show walkthrough for company creation
-        setUserProfile({
-          id: user.id,
-          email: user.email || '',
-          first_name: null,
-          last_name: null,
-          role: 'admin',
-          company_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        setShowWalkthrough(true)
       }
     } catch (error) {
       setError((error as AuthError).message)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleNavigateByRole = (role: string) => {
+    if (role === 'agent') {
+      navigate('/agent/dashboard')
+    } else if (role === 'admin') {
+      navigate('/admin/dashboard')
+    } else if (role === 'customer') {
+      navigate('/customer/dashboard')
+    } else {
+      navigate('/dashboard')
     }
   }
 
