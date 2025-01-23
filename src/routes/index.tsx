@@ -7,7 +7,6 @@ import { TicketList } from '../components/tickets/TicketList';
 import { CustomerList } from '../components/CustomerList';
 import { AnalyticsDashboard } from '../components/analytics/AnalyticsDashboard';
 import { SettingsPage } from '../components/settings/SettingsPage';
-import { HelpCenter } from '../components/help/HelpCenter';
 import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { TicketDetail } from '../components/tickets/TicketDetail';
 import { TeamPage } from '../components/teams/TeamPage';
@@ -86,10 +85,6 @@ export const router = createBrowserRouter([
           {
             path: 'settings',
             element: <SettingsPage />,
-          },
-          {
-            path: 'help',
-            element: <HelpCenter />,
           },
           {
             path: 'agents',

@@ -6,7 +6,6 @@ import {
   Users,
   Settings,
   Briefcase,
-  HelpCircle,
   Menu,
   X,
   BookOpen,
@@ -81,12 +80,6 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         label: "Settings",
         view: "settings",
         path: `/${role}/dashboard/settings`,
-      },
-      {
-        icon: HelpCircle,
-        label: "Help Center",
-        view: "help",
-        path: `/${role}/dashboard/help`,
       },
     ];
   };
