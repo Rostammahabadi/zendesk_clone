@@ -11,41 +11,46 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        background: "#F9FAFB",  // A bright, clean background
+        foreground: "#1F2937",  // A deeper gray for text
+
+        // Strong brand blue
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "#3B82F6",
+          foreground: "#ffffff",
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
+
+        // Use a simpler accent (like emerald) or a brand variant
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "#10B981",
+          foreground: "#ffffff",
+        },
+
+        // For destructive actions, keep it robust
+        destructive: {
+          DEFAULT: "#EF4444",
+          foreground: "#ffffff",
+        },
+
+        // More refined neutrals
+        muted: {
+          DEFAULT: "#E5E7EB", 
+          foreground: "#6B7280",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "#ffffff",
+          foreground: "#374151",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "#ffffff",
+          foreground: "#1F2937",
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        // Let's unify to a single bigger radius
+        DEFAULT: "10px",
+        lg: "12px",
+        full: "9999px",
       },
       keyframes: {
         "accordion-down": {

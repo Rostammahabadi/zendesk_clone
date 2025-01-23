@@ -144,7 +144,7 @@ export function EditTicketList() {
                 <Users className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Assignee:</span>
                 <select 
-                  value={ticket.assigned_to?.id || ''}
+                  value={typeof ticket.assigned_to === 'object' ? ticket.assigned_to?.id : ticket.assigned_to || ''}
                   onChange={(e) => handleFieldUpdate('assigned_to', e.target.value || null)}
                   className="text-sm border-0 bg-transparent focus:ring-0"
                 >

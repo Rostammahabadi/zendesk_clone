@@ -205,7 +205,7 @@ export function TicketDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-full bg-gray-50 dark:bg-gray-900">
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
@@ -234,7 +234,7 @@ export function TicketDetail() {
                 <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Assignee:</span>
                 <select disabled={role !== 'admin' && role !== 'agent'} className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white">
-                  <option>{ticket.assigned_to?.full_name || 'Unassigned'}</option>
+                  <option>{typeof ticket.assigned_to === 'object' ? ticket.assigned_to?.full_name : 'Unassigned'}</option>
                 </select>
               </div>
               <div className="flex items-center space-x-2">
