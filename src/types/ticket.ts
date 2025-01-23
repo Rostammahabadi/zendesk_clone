@@ -51,7 +51,7 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   created_by?: User;
-  assigned_to?: User | null;
+  assigned_to?: User | string | null;
   tags?: Tag[];
   messages?: TicketMessage[];
   events?: TicketEvent[];

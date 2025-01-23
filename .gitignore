@@ -37,3 +37,4 @@ coverage/
 /src/db/seed/create_agents.sql
 /src/db/seed/createUsers.js
 /src/db/seed/create_teams.sql
+/src/db/seed/*

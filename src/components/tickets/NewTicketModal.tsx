@@ -41,7 +41,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
 
     createTicket({
       ...formData,
-      assigned_to: !isAgent ? null : (formData.assigned_to ? { id: formData.assigned_to } as User : null),
+      assigned_to: !isAgent ? null : (formData.assigned_to ? formData.assigned_to : null),
       created_by: formData.created_by ? { id: formData.created_by } as User : undefined
     }, {
       onSuccess: () => {
