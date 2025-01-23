@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Clock,
   X,
-  History,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -33,7 +32,6 @@ export function TicketDetail() {
   const [clearMessage, setClearMessage] = useState(false);
   const [clearInternalNote, setClearInternalNote] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollableRef = useRef<HTMLDivElement>(null);
   const isAgent = role === 'agent' || role === 'admin';
 
   const { data: ticket, isLoading, refetch } = useTicket(ticketId);
@@ -169,18 +167,18 @@ export function TicketDetail() {
     }
   };
 
-  const getEventDescription = (event: any) => {
-    switch (event.event_type) {
-      case 'status':
-        return `Status changed from ${event.old_value || 'none'} to ${event.new_value}`;
-      case 'priority':
-        return `Priority changed from ${event.old_value || 'none'} to ${event.new_value}`;
-      case 'assigned_to':
-        return `Assignment changed from ${event.old_value || 'unassigned'} to ${event.new_value || 'unassigned'}`;
-      default:
-        return `${event.event_type} updated`;
-    }
-  };
+  // const getEventDescription = (event: any) => {
+  //   switch (event.event_type) {
+  //     case 'status':
+  //       return `Status changed from ${event.old_value || 'none'} to ${event.new_value}`;
+  //     case 'priority':
+  //       return `Priority changed from ${event.old_value || 'none'} to ${event.new_value}`;
+  //     case 'assigned_to':
+  //       return `Assignment changed from ${event.old_value || 'unassigned'} to ${event.new_value || 'unassigned'}`;
+  //     default:
+  //       return `${event.event_type} updated`;
+  //   }
+  // };
 
   if (isLoading) {
     return (
