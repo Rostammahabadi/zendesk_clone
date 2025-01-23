@@ -232,6 +232,13 @@
       "when": 1737649761301,
       "tag": "0032_yellow_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1737659792817,
+      "tag": "0033_complete_stranger",
+      "breakpoints": true
     }
   ]
 }

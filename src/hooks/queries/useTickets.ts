@@ -46,6 +46,10 @@ export const useTickets = () => {
         query = query.eq('created_by', userData.id);
       }
 
+      if (userData?.role === 'agent') {
+        query = query.eq('assigned_to', userData.id);
+      }
+
       const { data, error } = await query
         .eq('company_id', userData.company_id)
         .order('created_at', { ascending: false });

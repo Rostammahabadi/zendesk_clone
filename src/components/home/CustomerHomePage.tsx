@@ -5,28 +5,23 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import { useTicketStats } from "../../hooks/queries/useTicketStats";
+import { useState } from "react";
 
-const ticketStats = [
-  {
-    label: "Open Tickets",
-    count: 3,
-    color: "text-blue-500 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-900/20",
-  },
-  {
-    label: "Resolved Tickets",
-    count: 12,
-    color: "text-green-500 dark:text-green-400",
-    bgColor: "bg-green-50 dark:bg-green-900/20",
-  },
-  {
-    label: "Pending Responses",
-    count: 1,
-    color: "text-yellow-500 dark:text-yellow-400",
-    bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
-  },
+type TimeFrame = '1m' | '3m' | '6m';
+
+interface TimeFrameOption {
+  value: TimeFrame;
+  label: string;
+}
+
+const timeFrameOptions: TimeFrameOption[] = [
+  { value: '1m', label: 'Last Month' },
+  { value: '3m', label: 'Last 3 Months' },
+  { value: '6m', label: 'Last 6 Months' },
 ];
 
 const recentActivity = [
@@ -59,29 +54,44 @@ const recentActivity = [
   },
 ];
 
-const supportResources = [
-  {
-    title: "Knowledge Base",
-    description: "Find answers to common questions",
-    icon: HelpCircle,
-    link: "/kb",
-  },
-  {
-    title: "Community Forum",
-    description: "Connect with other users",
-    icon: MessageSquare,
-    link: "/forum",
-  },
-  {
-    title: "Contact Support",
-    description: "Get help from our team",
-    icon: AlertCircle,
-    link: "/contact",
-  },
-];
-
 export function CustomerHomePage() {
   const { userData } = useAuth();
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('1m');
+  const { data: stats, isLoading } = useTicketStats(selectedTimeFrame);
+  const supportResources = [
+    {
+      title: "Knowledge Base",
+      description: "Find answers to common questions",
+      icon: HelpCircle,
+      link: `/${userData?.role}/dashboard/knowledgebase`,
+    },
+    {
+      title: "Contact Support",
+      description: "Get help from our team",
+      icon: AlertCircle,
+      link: "/contact",
+    },
+  ];
+  const ticketStats = [
+    {
+      label: "Open Tickets",
+      count: stats?.openTickets ?? 0,
+      color: "text-blue-500 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
+    },
+    {
+      label: "Resolved Tickets",
+      count: stats?.resolvedTickets ?? 0,
+      color: "text-green-500 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
+    },
+    {
+      label: "Pending Responses",
+      count: stats?.pendingTickets ?? 0,
+      color: "text-yellow-500 dark:text-yellow-400",
+      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
+    },
+  ];
   
   if (!userData) return null;
 
@@ -89,14 +99,30 @@ export function CustomerHomePage() {
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header Section */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Welcome back, {userData.first_name || userData.email}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Here's an overview of your support tickets and recent activity
-            </p>
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Welcome back, {userData.first_name || userData.email}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Here's an overview of your support tickets and recent activity
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <select
+                value={selectedTimeFrame}
+                onChange={(e) => setSelectedTimeFrame(e.target.value as TimeFrame)}
+                className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {timeFrameOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -105,10 +131,10 @@ export function CustomerHomePage() {
           {ticketStats.map((stat) => (
             <div
               key={stat.label}
-              className={`${stat.bgColor} rounded-lg p-6`}
+              className={`${stat.bgColor} rounded-lg p-6 ${isLoading ? 'animate-pulse' : ''}`}
             >
               <div className={`text-3xl font-bold ${stat.color}`}>
-                {stat.count}
+                {isLoading ? '-' : stat.count}
               </div>
               <div className="text-gray-600 dark:text-gray-400 mt-1">
                 {stat.label}

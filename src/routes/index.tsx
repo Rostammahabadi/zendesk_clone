@@ -12,6 +12,7 @@ import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { TicketDetail } from '../components/tickets/TicketDetail';
 import { TeamPage } from '../components/teams/TeamPage';
 import { AgentsPage } from '../components/agents/AgentsPage';
+import { KnowledgeBase } from '../components/knowledge/KnowledgeBase';
 import { useAuth } from '../hooks/useAuth';
 
 function RootRedirect() {
@@ -93,6 +94,10 @@ export const router = createBrowserRouter([
           {
             path: 'agents',
             element: <AgentsPage />,
+          },
+          {
+            path: 'knowledgebase',
+            element: <KnowledgeBase />,
           },
         ],
       },

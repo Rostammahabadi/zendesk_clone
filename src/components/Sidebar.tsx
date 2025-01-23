@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Menu,
   X,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
@@ -68,6 +69,12 @@ export function Sidebar({ onNavigate, currentView }: SidebarProps) {
         label: "Tickets",
         view: "tickets",
         path: `/${role}/dashboard/tickets`,
+      },
+      {
+        icon: BookOpen,
+        label: "Knowledge Base",
+        view: "knowledgebase",
+        path: `/${role}/dashboard/knowledgebase`,
       },
       {
         icon: Settings,
