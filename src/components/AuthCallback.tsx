@@ -15,6 +15,11 @@ interface UserProfile {
   updated_at: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+}
+
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -32,21 +37,22 @@ export const AuthCallback = () => {
         }
 
         // Get user's email domain
-        const emailDomain = session.user.email?.split('@')[1]
+        const emailDomain = session.user.email?.split('@')[1].toLowerCase()
         if (!emailDomain) {
           throw new Error('Invalid email format')
         }
 
         // Check if company exists with this domain
-        const { data: companies, error: companyError } = await supabase
+        const { data: company, error: companyError } = await supabase
           .from('companies')
           .select('id, name')
           .eq('domain', emailDomain)
+          .single() as { data: Company | null; error: any }
 
         if (companyError) throw companyError
 
         // If no company found with this domain, sign out and redirect to error
-        if (!companies || companies.length === 0) {
+        if (!company) {
           await supabase.auth.signOut()
           navigate('/login?error=invalid_domain')
           return
@@ -70,7 +76,7 @@ export const AuthCallback = () => {
             .insert({
               id: session.user.id,
               email: session.user.email,
-              company_id: companies[0].id,
+              company_id: company.id,
               role: 'agent'
             })
             .select()
