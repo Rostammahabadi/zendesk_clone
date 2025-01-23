@@ -9,10 +9,9 @@ const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined
 
 export function DarkModeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage and system preference on initial load
+    // Check localStorage only, default to light mode
     if (typeof window !== 'undefined') {
-      return localStorage.theme === 'dark' || 
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      return localStorage.theme === 'dark';
     }
     return false;
   });

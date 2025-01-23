@@ -243,7 +243,7 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={e => {
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800" onPointerDownOutside={e => {
         // Prevent closing on clicking outside if on first step
         if (step === 1) {
           e.preventDefault();
@@ -253,14 +253,14 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         {step === 1 && (
           <>
             <DialogHeader>
-              <DialogTitle>Welcome to Your Support Desk</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-gray-900 dark:text-white">Welcome to Your Support Desk</DialogTitle>
+              <DialogDescription className="text-gray-600 dark:text-gray-300">
                 Let's start by getting to know you and your company.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName" className="text-gray-900 dark:text-white">First Name</Label>
                 <Input
                   id="firstName"
                   value={firstName}
@@ -268,26 +268,29 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                   placeholder="Enter your first name"
                   autoFocus
                   disabled={isLoading}
+                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName" className="text-gray-900 dark:text-white">Last Name</Label>
                 <Input
                   id="lastName"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter your last name"
                   disabled={isLoading}
+                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName" className="text-gray-900 dark:text-white">Company Name</Label>
                 <Input
                   id="companyName"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="Enter your company name"
                   disabled={isLoading}
+                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
@@ -297,14 +300,14 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         {step === 2 && (
           <>
             <DialogHeader>
-              <DialogTitle>Create Your First Team</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-gray-900 dark:text-white">Create Your First Team</DialogTitle>
+              <DialogDescription className="text-gray-600 dark:text-gray-300">
                 Teams help organize your support staff effectively.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="teamName">Team Name</Label>
+                <Label htmlFor="teamName" className="text-gray-900 dark:text-white">Team Name</Label>
                 <Input
                   id="teamName"
                   value={teamName}
@@ -312,6 +315,7 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                   placeholder="e.g., Customer Support"
                   autoFocus
                   disabled={isLoading}
+                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
@@ -321,8 +325,8 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         {step === 3 && (
           <>
             <DialogHeader>
-              <DialogTitle>Invite Team Members</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-gray-900 dark:text-white">Invite Team Members</DialogTitle>
+              <DialogDescription className="text-gray-600 dark:text-gray-300">
                 Add members to your {teamName} team.
               </DialogDescription>
             </DialogHeader>
@@ -340,9 +344,9 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                     type="text"
                     autoFocus
                     disabled={isLoading}
-                    className="pr-[100px]"
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-[100px]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
                     @{emailDomain}
                   </span>
                 </div>
@@ -355,9 +359,9 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
                 {members.map((member) => (
                   <div
                     key={member.email}
-                    className="flex items-center justify-between p-2 bg-muted rounded-md"
+                    className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded-md"
                   >
-                    <span className="text-sm">{member.email}</span>
+                    <span className="text-sm text-gray-900 dark:text-white">{member.email}</span>
                     <Button
                       variant="ghost"
                       size="icon"
