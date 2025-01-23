@@ -5,8 +5,11 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import { useState } from "react";
+import { CreateTicketFlow } from "../tickets/CreateTicketFlow";
 
 const ticketStats = [
   {
@@ -82,20 +85,22 @@ const supportResources = [
 
 export function CustomerHomePage() {
   const { userData } = useAuth();
-
+  
   if (!userData) return null;
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Welcome back, {userData.first_name || userData.email}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Here's an overview of your support tickets and recent activity
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Welcome back, {userData.first_name || userData.email}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Here's an overview of your support tickets and recent activity
+            </p>
+          </div>
         </div>
 
         {/* Quick Stats */}

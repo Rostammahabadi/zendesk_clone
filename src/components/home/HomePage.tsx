@@ -5,14 +5,23 @@ import { useAuth } from "../../hooks/useAuth";
 export function HomePage() {
   const { user } = useAuth();
 
-  // If user is not logged in, you might want to redirect or show a loading state
-  if (!user) return null;
-
-  // If user is admin, render AdminHomePage
-  if (user.user_metadata.role === 'admin') {
-    return <AdminHomePage />;
+  // If user is not logged in, show loading or redirect
+  if (!user) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // For all other roles (customer, agent, etc.), render CustomerHomePage
-  return <CustomerHomePage />;
+  // Get role from user metadata
+  const userRole = user.user_metadata?.role;
+
+  // Render appropriate page based on role
+  switch (userRole) {
+    case 'admin':
+      return <AdminHomePage />;
+    case 'agent':
+      return <CustomerHomePage />; // For now using CustomerHomePage for agents too
+    case 'customer':
+      return <CustomerHomePage />;
+    default:
+      return <CustomerHomePage />; // Fallback to customer page
+  }
 }

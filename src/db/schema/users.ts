@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { companies } from './companies';
 
 export const users = pgTable("users", {
-	id: uuid().primaryKey().notNull(),
+	id: uuid().primaryKey().defaultRandom().notNull(),
 	email: text().notNull(),
 	firstName: text("first_name"),
 	lastName: text("last_name"),
@@ -23,7 +23,12 @@ export const users = pgTable("users", {
 			foreignColumns: [companies.id],
 			name: "users_company_id_companies_id_fk"
 		}).onDelete("cascade"),
-	pgPolicy("select_users_policy", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = id)` }),
-	pgPolicy("admin_access_to_all_users_within_company", { as: "permissive", for: "select", to: ["authenticated"] }),
-	pgPolicy("admin_access_test_without_text", { as: "permissive", for: "select", to: ["authenticated"] }),
+  pgPolicy("select_users_policy", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = id)` }),
+  pgPolicy("admin_access_to_all_users_within_company", { as: "permissive", for: "select", to: ["authenticated"] }),
+  pgPolicy("admin_access_test_without_text", { as: "permissive", for: "select", to: ["authenticated"] }),
+  pgPolicy("any_authenticated_user_can_add_self", { as: "permissive", for: "insert", to: ["authenticated"] }),
+  pgPolicy("Enable update for users based on email", { as: "permissive", for: "update", to: ["public"] }),
+  pgPolicy("Enable read access for all users", { as: "permissive", for: "select", to: ["public"] }),
+  pgPolicy("users_can_update_their_own_information", { as: "permissive", for: "update", to: ["authenticated"] }),
+  pgPolicy("check_agent_role", { as: "permissive", for: "insert", to: ["authenticated"] }),
 ]);

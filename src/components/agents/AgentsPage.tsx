@@ -22,12 +22,13 @@ export function AgentsPage() {
   const handleCreateAgent = async (formData: any) => {
     try {
       await createAgent.mutateAsync({
+        id: crypto.randomUUID(),
         email: formData.email,
         first_name: formData.firstName,
         last_name: formData.lastName,
         role: formData.role,
         title: formData.title,
-        phone: formData.phoneNumber,
+        phone_number: formData.phoneNumber,
         avatar_url: formData.avatarUrl,
         company_id: userData?.company_id,
       });

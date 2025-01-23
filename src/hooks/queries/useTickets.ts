@@ -193,7 +193,7 @@ export const useCreateTicket = () => {
         .insert({
           ...ticketData,
           company_id: userData?.company_id,
-          created_by: userData?.id,
+          created_by: ticketData.created_by?.id || userData?.id,
         })
         .select()
         .single();

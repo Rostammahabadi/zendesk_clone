@@ -4,7 +4,8 @@ export interface Agent {
   first_name: string;
   last_name: string;
   role: string;
-  company_id: string;
+  avatar_url?: string;
+  company_id?: string;
   created_at?: string;
   title?: string;
   updated_at?: string;
@@ -13,6 +14,7 @@ export interface Agent {
   resolvedToday?: number;
   responseTime?: string;
   phone_number?: string;
+  phone?: string;
 }
 
 export interface Customer {
@@ -35,6 +37,7 @@ export interface User {
   last_name?: string;
   role?: UserRole;
   company_id?: string;
+  phone_number?: string;
   created_at?: string;
   updated_at?: string;
 }

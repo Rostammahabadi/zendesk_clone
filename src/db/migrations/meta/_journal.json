@@ -218,6 +218,20 @@
       "when": 1737584302872,
       "tag": "0030_next_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1737649647589,
+      "tag": "0031_white_baron_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1737649761301,
+      "tag": "0032_yellow_mother_askani",
+      "breakpoints": true
     }
   ]
 }

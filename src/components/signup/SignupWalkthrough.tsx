@@ -91,6 +91,11 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
           data: { company_id: newCompany.id }
         })
 
+        await supabase.from('user_roles').insert({
+          user_id: user.id,
+          role: 'admin',
+        })
+
         if (createError) throw createError;
         if (!newCompany) throw new Error("Failed to create company");
         

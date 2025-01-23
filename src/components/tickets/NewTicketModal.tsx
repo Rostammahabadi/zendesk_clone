@@ -11,6 +11,12 @@ import { User } from "../../types/user";
 interface NewTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialCustomer?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 const statusOptions: TicketStatus[] = ['open', 'pending', 'closed'];
@@ -18,7 +24,7 @@ const priorityOptions: TicketPriority[] = ['low', 'medium', 'high'];
 const topicOptions: TicketTopic[] = ['support', 'billing', 'technical'];
 const typeOptions: TicketType[] = ['question', 'problem', 'feature_request'];
 
-export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
+export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketModalProps) {
   const { userData } = useAuth();
   const [formData, setFormData] = useState({
     subject: "",
@@ -29,7 +35,7 @@ export function NewTicketModal({ isOpen, onClose }: NewTicketModalProps) {
     type: "question" as TicketType,
     assigned_to: null as string | null,
     company_id: userData?.company_id || null,
-    created_by: userData?.id || null,
+    created_by: initialCustomer?.id || (userData?.role === 'customer' ? userData?.id : null) as string | null,
   });
 
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents();

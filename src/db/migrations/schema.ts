@@ -181,7 +181,11 @@ export const users = pgTable("users", {
 	pgPolicy("select_users_policy", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(( SELECT auth.uid() AS uid) = id)` }),
 	pgPolicy("admin_access_to_all_users_within_company", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("admin_access_test_without_text", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("any_authenticated_user_can_add_self", { as: "permissive", for: "insert", to: ["authenticated"] }),
 	pgPolicy("Enable update for users based on email", { as: "permissive", for: "update", to: ["public"] }),
+	pgPolicy("Enable read access for all users", { as: "permissive", for: "select", to: ["public"] }),
+	pgPolicy("users_can_update_their_own_information", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("check_agent_role", { as: "permissive", for: "insert", to: ["authenticated"] }),
 ]);
 
 export const rolePermissions = pgTable("role_permissions", {
@@ -205,7 +209,9 @@ export const userRoles = pgTable("user_roles", {
 			name: "user_roles_user_id_fkey"
 		}).onDelete("cascade"),
 	unique("user_roles_user_id_role_key").on(table.userId, table.role),
-	pgPolicy("Allow auth admin to read user roles", { as: "permissive", for: "select", to: ["supabase_auth_admin"], using: sql`true` }),
+	pgPolicy("any_authenticated_user", { as: "permissive", for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = user_id)`  }),
+	pgPolicy("insert_user_roles", { as: "permissive", for: "insert", to: ["anon"] }),
+	pgPolicy("Allow all users to insert into user_roles", { as: "permissive", for: "insert", to: ["anon", "authenticated"] }),
 ]);
 
 export const skills = pgTable("skills", {

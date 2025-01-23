@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { getEmailError } from '../utils/emailValidation'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { SignupWalkthrough } from './signup/SignupWalkthrough'
+import { OnboardingWalkthrough } from './OnboardingWalkthrough'
 import { toast } from 'sonner'
 
 interface AuthError {
@@ -12,6 +13,13 @@ interface AuthError {
 interface ValidationErrors {
   email?: string
   password?: string[]
+}
+
+interface OnboardingData {
+  firstName: string
+  lastName: string
+  teamId?: number
+  phoneNumber?: string
 }
 
 interface UserProfile {
@@ -37,6 +45,7 @@ export const LoginPage = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [showWalkthrough, setShowWalkthrough] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   // Check for error parameter in URL
@@ -99,6 +108,14 @@ export const LoginPage = () => {
       validateEmail(email) &&
       validatePassword(password).length === 0
     )
+  }
+
+  const updateUserData = async (data: OnboardingData) => {
+    await supabase.from('users').update({
+      first_name: data.firstName,
+      last_name: data.lastName,
+      phone_number: data.phoneNumber,
+    }).eq('id', userProfile?.id)
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -213,7 +230,9 @@ export const LoginPage = () => {
           if (metadataError) throw metadataError
 
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
-          handleNavigateByRole(newProfile.role)
+          
+          setUserProfile(newProfile)
+          setShowOnboarding(true)
         } else {
           // 5b) No matching company => user *must* create one.
           // Because your schema requires company_id (NOT NULL) for any user,
@@ -224,6 +243,7 @@ export const LoginPage = () => {
             data: { role: 'admin' },
           })
           if (updateError) throw updateError
+          
 
           setUserProfile({
             id: user.id,
@@ -246,14 +266,18 @@ export const LoginPage = () => {
   }
 
   const handleNavigateByRole = (role: string) => {
-    if (role === 'agent') {
-      navigate('/agent/dashboard')
-    } else if (role === 'admin') {
-      navigate('/admin/dashboard')
-    } else if (role === 'customer') {
-      navigate('/customer/dashboard')
-    } else {
-      navigate('/dashboard')
+    switch (role.toLowerCase()) {
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      case 'agent':
+        window.location.href = '/';  // Use window.location for full page reload
+        break;
+      case 'customer':
+        window.location.href = '/';  // Use window.location for full page reload
+        break;
+      default:
+        window.location.href = '/';  // Use window.location for full page reload
     }
   }
 
@@ -312,20 +336,15 @@ export const LoginPage = () => {
         }
       })
 
+      // Wait a brief moment to ensure metadata is updated
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
       // Navigate based on role
-      if (user.role === 'agent') {
-        navigate('/agent/dashboard')
-      } else if (user.role === 'admin') {
-        navigate('/admin/dashboard')
-      } else if (user.role === 'customer') {
-        navigate('/customer/dashboard')
-      } else {
-        navigate('/dashboard')
-      }
+      handleNavigateByRole(user.role)
     } catch (error) {
       console.error('Error completing setup:', error)
       // Navigate to default dashboard if role fetch fails
-      navigate('/dashboard')
+      navigate('/')
     }
   }
 
@@ -492,6 +511,16 @@ export const LoginPage = () => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }}
+      />
+
+      <OnboardingWalkthrough
+        isOpen={showOnboarding}
+        onComplete={(data) => {
+          setShowOnboarding(false)
+          updateUserData(data)
+          handleWalkthroughComplete()
+        }}
+        userEmail={userProfile?.email}
       />
     </>
   )

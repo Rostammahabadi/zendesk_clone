@@ -269,8 +269,8 @@ export function TicketList() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
         ) : !tickets || tickets.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="flex items-center justify-center h-full w-full">
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow w-full mx-4">
               <p className="text-gray-500 dark:text-gray-400">No tickets found</p>
             </div>
           </div>

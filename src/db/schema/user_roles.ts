@@ -16,5 +16,7 @@ export const userRoles = pgTable("user_roles", {
     name: "user_roles_user_id_fkey"
   }).onDelete("cascade"),
   unique("user_roles_user_id_role_key").on(table.userId, table.role),
-  pgPolicy("Allow auth admin to read user roles", { as: "permissive", for: "select", to: ["supabase_auth_admin"], using: sql`true` }),
+  pgPolicy("any_authenticated_user", { as: "permissive", for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = user_id)` }),
+  pgPolicy("insert_user_roles", { as: "permissive", for: "insert", to: ["anon"] }),
+  pgPolicy("Allow all users to insert into user_roles", { as: "permissive", for: "insert", to: ["anon", "authenticated"] }),
 ]);
