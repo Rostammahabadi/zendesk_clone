@@ -52,7 +52,18 @@ export const useAgent = (agentId: string) => {
 export const useCreateAgent = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (agent: Agent) => await supabase.from('users').insert(agent),
+    mutationFn: async (agent: Agent) => {
+      const { data: newUser, error } = await supabase.from('users').insert(agent).select().single();
+      if (error) throw error;
+      if (!newUser) throw new Error('Failed to create agent');
+      
+      await supabase.from('user_roles').insert({
+        user_id: newUser.id,
+        role: 'agent',
+      });
+      
+      return newUser;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
   });
 };

@@ -44,6 +44,11 @@ export function CreateTicketFlow({ isOpen, onClose }: CreateTicketFlowProps) {
 
       if (error) throw error;
 
+      await supabase.from('user_roles').insert({
+        user_id: newUser.id,
+        role: 'customer',
+      })
+
       setSelectedUser(newUser);
       setCurrentStep('ticket');
       toast.success('User created successfully');

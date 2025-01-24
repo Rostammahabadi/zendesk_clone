@@ -112,6 +112,11 @@ export const AuthCallback = () => {
             }
           })
 
+          await supabase.from('user_roles').insert({
+            user_id: newProfile.id,
+            role: 'agent',
+          })
+
           // Clear cached user data to force a fresh fetch
           localStorage.removeItem('userData')
 

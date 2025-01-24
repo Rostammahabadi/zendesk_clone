@@ -200,7 +200,10 @@ export const LoginPage = () => {
             .single()
 
           if (createProfileError) throw createProfileError
-
+          await supabase.from('user_roles').insert({
+            user_id: newProfile.id,
+            role: 'agent',
+          })
           // Update user metadata so Supabase Auth knows their role & company too
           const { error: metadataError } = await supabase.auth.updateUser({
             data: {

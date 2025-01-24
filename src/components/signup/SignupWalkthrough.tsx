@@ -95,7 +95,7 @@ export const SignupWalkthrough = () => {
         setCompanyId(newCompany.id);
 
         // Create user profile as admin
-        const { error: profileError } = await supabase
+        const { data: userProfile, error: profileError } = await supabase
           .from('users')
           .insert({ 
             id: user.id,
@@ -104,10 +104,14 @@ export const SignupWalkthrough = () => {
             last_name: lastName,
             company_id: newCompany.id,
             role: 'admin'
-          });
+          }).select().single();
 
         if (profileError) throw profileError;
-
+        if (!userProfile) throw new Error("Failed to create user profile");
+        await supabase.from('user_roles').insert({
+          user_id: userProfile.id,
+          role: 'admin',
+        })
         toast.success("Company created successfully!");
         setStep(2);
       } catch (error: any) {
@@ -158,18 +162,24 @@ export const SignupWalkthrough = () => {
 
         // Process team member invites
         for (const member of members) {
-          const { error: inviteError } = await supabase
+          const { data: newUser, error: inviteError } = await supabase
             .from('users')
             .insert({
               email: member.email,
               company_id: companyId,
               role: member.role
-            });
+            }).select()
+            .single();
 
           if (inviteError) {
             console.error(`Failed to create user for ${member.email}:`, inviteError);
             toast.error(`Failed to invite ${member.email}`);
           }
+          if (!newUser) throw new Error(`Failed to invite ${member.email}`);
+          await supabase.from('user_roles').insert({
+            user_id: newUser.id,
+            role: member.role,
+          })
         }
 
         // Update user metadata with role
