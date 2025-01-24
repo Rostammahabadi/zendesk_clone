@@ -30,9 +30,10 @@ export const useTicketStats = () => {
       // Filter tickets based on role
       if (userData.role === 'agent') {
         query.eq('assigned_to', userData.id);
-      } else {
+      } else if (userData.role === 'customer') {
         query.eq('created_by', userData.id);
       }
+      // Admins will see all company tickets (no additional filter)
 
       const { data: tickets, error } = await query;
 
@@ -66,7 +67,9 @@ export const useTicketStats = () => {
         total: tickets.length,
         open: tickets.filter(ticket => ticket.status === 'open').length,
         pending: tickets.filter(ticket => 
-            ticket.status === 'in_progress'
+          userData.role === 'customer' 
+            ? ticket.status === 'in_progress'
+            : ticket.status === 'pending'
         ).length,
         resolvedToday: tickets.filter(ticket => 
           ticket.status === 'closed' && 
