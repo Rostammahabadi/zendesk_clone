@@ -66,7 +66,10 @@ export const useCreateAgent = () => {
       
       return newUser;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', userData?.company_id] }),
+    onSuccess: () => {
+      // Invalidate all agent queries
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+    },
   });
 };
 
@@ -74,15 +77,22 @@ export const useUpdateAgent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (agent: Agent) => await supabase.from('users').update(agent).eq('id', agent.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+    onSuccess: (_, agent) => {
+      // Invalidate all agent queries and the specific agent query
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ['agents', agent.id] });
+    },
   });
 };
-
 
 export const useDeleteAgent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (agentId: string) => await supabase.from('users').delete().eq('id', agentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+    onSuccess: (_, agentId) => {
+      // Invalidate all agent queries and the specific agent query
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ['agents', agentId] });
+    },
   });
 };
