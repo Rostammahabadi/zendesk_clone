@@ -26,6 +26,8 @@ const typeOptions: TicketType[] = ['question', 'problem', 'feature_request'];
 
 export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketModalProps) {
   const { userData } = useAuth();
+  const isAgent = userData?.role === 'agent' || userData?.role === 'admin';
+  
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
@@ -33,21 +35,21 @@ export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketMo
     priority: "medium" as TicketPriority,
     topic: "support" as TicketTopic,
     type: "question" as TicketType,
-    assigned_to: null as string | null,
+    assigned_to: isAgent ? userData?.id : null as string | null,
     company_id: userData?.company_id || null,
-    created_by: initialCustomer?.id || (userData?.role === 'customer' ? userData?.id : null) as string | null,
+    created_by: isAgent ? (initialCustomer?.id || null) : userData?.id,
   });
 
   const { data: agents = [], isLoading: isLoadingAgents } = useAgents();
   const { mutate: createTicket, isPending: isCreating } = useCreateTicket();
-  const isAgent = userData?.role === 'agent' || userData?.role === 'admin';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     createTicket({
       ...formData,
-      assigned_to: !isAgent ? null : (formData.assigned_to ? formData.assigned_to : null),
+      status: isAgent ? formData.status : 'open',
+      assigned_to: isAgent ? formData.assigned_to : null,
       created_by: formData.created_by ? { id: formData.created_by } as User : undefined
     }, {
       onSuccess: () => {
@@ -59,9 +61,9 @@ export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketMo
           priority: "medium" as TicketPriority,
           topic: "support" as TicketTopic,
           type: "question" as TicketType,
-          assigned_to: null,
+          assigned_to: isAgent ? userData?.id : null,
           company_id: userData?.company_id || null,
-          created_by: userData?.id || null,
+          created_by: isAgent ? (initialCustomer?.id || null) : userData?.id,
         });
         onClose();
       },
@@ -106,7 +108,7 @@ export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketMo
                 className="min-h-[200px]"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${isAgent ? 'grid-cols-2' : 'grid-cols-3'} gap-4`}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Type
@@ -199,23 +201,15 @@ export function NewTicketModal({ isOpen, onClose, initialCustomer }: NewTicketMo
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                disabled={isCreating}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg flex items-center gap-2"
                 disabled={isCreating}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg disabled:opacity-50"
               >
-                {isCreating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Ticket'
-                )}
+                {isCreating ? "Creating..." : "Create Ticket"}
               </button>
             </div>
           </form>

@@ -16,6 +16,7 @@ import { TagInput } from "../ui/TagInput";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import { convertFromRaw } from 'draft-js';
 import { useTicket, useUpdateTicket, useAddTicketMessage } from "../../hooks/queries/useTickets";
+import { useAgents } from '../../hooks/queries/useAgents';
 import { supabase } from "../../lib/supabaseClient";
 
 const statusOptions = ['open', 'pending', 'closed'];
@@ -33,6 +34,7 @@ export function TicketDetail() {
   const [clearInternalNote, setClearInternalNote] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAgent = role === 'agent' || role === 'admin';
+  const { data: agents } = useAgents();
 
   const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const { mutate: updateTicket } = useUpdateTicket();
@@ -94,7 +96,7 @@ export function TicketDetail() {
   };
 
   const handleFieldUpdate = async (field: UpdatableTicketField, value: any) => {
-    if (!ticket) return;
+    if (!ticket || !isAgent) return;
 
     updateTicket({ ticketId: ticket.id, field, value }, {
       onSuccess: () => {
@@ -249,17 +251,33 @@ export function TicketDetail() {
               <div className="flex items-center space-x-2">
                 <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Assignee:</span>
-                <select disabled={role !== 'admin' && role !== 'agent'} className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white">
-                  <option>{typeof ticket.assigned_to === 'object' ? ticket.assigned_to?.full_name : 'Unassigned'}</option>
+                <select 
+                  disabled={!isAgent}
+                  value={typeof ticket.assigned_to === 'object' ? ticket.assigned_to?.id : ticket.assigned_to || ''}
+                  onChange={(e) => handleFieldUpdate('assigned_to', e.target.value)}
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
+                >
+                  <option value="">{typeof ticket.assigned_to === 'object' ? ticket.assigned_to?.full_name : 'Unassigned'}</option>
+                  {isAgent && agents?.map(agent => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.first_name} {agent.last_name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
                 <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Tags:</span>
-                <TagInput
-                  tags={ticket.tags?.map(tag => tag.id) || []}
-                  onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
-                />
+                {isAgent ? (
+                  <TagInput
+                    tags={ticket.tags?.map(tag => tag.id) || []}
+                    onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
+                  />
+                ) : (
+                  <span className="text-sm text-gray-900 dark:text-white">
+                    {ticket.tags?.map(tag => tag.name).join(', ') || 'No tags'}
+                  </span>
+                )}
               </div>
             </div>
             <div className="space-y-3">
@@ -269,7 +287,8 @@ export function TicketDetail() {
                 <select
                   value={ticket?.type || 'question'}
                   onChange={(e) => handleFieldUpdate('type', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
+                  disabled={!isAgent}
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
                 >
                   {typeOptions.map((type) => (
                     <option key={type} value={type} className="bg-white dark:bg-gray-800">
@@ -284,7 +303,8 @@ export function TicketDetail() {
                 <select 
                   value={ticket?.priority || 'medium'}
                   onChange={(e) => handleFieldUpdate('priority', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
+                  disabled={!isAgent}
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
                 >
                   {priorityOptions.map((priority) => (
                     <option key={priority} value={priority} className="bg-white dark:bg-gray-800">
@@ -299,7 +319,8 @@ export function TicketDetail() {
                 <select
                   value={ticket?.topic || 'support'}
                   onChange={(e) => handleFieldUpdate('topic', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
+                  disabled={!isAgent}
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
                 >
                   {topicOptions.map((topic) => (
                     <option key={topic} value={topic} className="bg-white dark:bg-gray-800">
@@ -314,10 +335,10 @@ export function TicketDetail() {
                 <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
                 <select
-                  disabled={role !== 'admin' && role !== 'agent'}
+                  disabled={!isAgent}
                   value={ticket?.status || 'open'}
                   onChange={(e) => handleFieldUpdate('status', e.target.value)}
-                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white"
+                  className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
                 >
                   {statusOptions.map((status) => (
                     <option key={status} value={status} className="bg-white dark:bg-gray-800">

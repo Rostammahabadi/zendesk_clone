@@ -17,6 +17,7 @@ export function CreateTicketFlow({ isOpen, onClose }: CreateTicketFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('search');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const { userData } = useAuth();
+  const isAgent = userData?.role === 'agent' || userData?.role === 'admin';
 
   if (!isOpen) return null;
 
@@ -58,10 +59,20 @@ export function CreateTicketFlow({ isOpen, onClose }: CreateTicketFlowProps) {
   };
 
   const handleClose = () => {
-    setCurrentStep('search');
+    setCurrentStep(isAgent ? 'search' : 'ticket');
     setSelectedUser(null);
     onClose();
   };
+
+  // If user is a customer, skip directly to ticket creation
+  if (!isAgent) {
+    return (
+      <NewTicketModal
+        isOpen={isOpen}
+        onClose={handleClose}
+      />
+    );
+  }
 
   return (
     <>
@@ -100,4 +111,4 @@ export function CreateTicketFlow({ isOpen, onClose }: CreateTicketFlowProps) {
       )}
     </>
   );
-} 
+}

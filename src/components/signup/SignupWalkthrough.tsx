@@ -1,18 +1,12 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { useNavigate } from "react-router-dom";
 import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from '../../hooks/useAuth'
 
 type Step = 1 | 2 | 3;
 
@@ -21,37 +15,35 @@ interface TeamMember {
   role: "admin" | "agent";
 }
 
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: 'admin' | 'agent' | 'customer';
-  company_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface SignupWalkthroughProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  userProfile: UserProfile;
-}
-
-export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWalkthroughProps) => {
+export const SignupWalkthrough = () => {
+  const navigate = useNavigate();
+  const { userData } = useAuth();
   const [step, setStep] = useState<Step>(1);
-  const [firstName, setFirstName] = useState(userProfile.first_name || "");
-  const [lastName, setLastName] = useState(userProfile.last_name || "");
+  const [firstName, setFirstName] = useState(userData?.first_name || "");
+  const [lastName, setLastName] = useState(userData?.last_name || "");
   const [companyName, setCompanyName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [emailDomain, setEmailDomain] = useState<string>("");
+  const [_, setEmailDomain] = useState<string>("");
 
   const handleNext = async () => {
     if (step === 1) {
+      // Validate required fields
+      if (!firstName.trim()) {
+        toast.error("First name is required");
+        return;
+      }
+      if (!lastName.trim()) {
+        toast.error("Last name is required");
+        return;
+      }
+      if (!companyName.trim()) {
+        toast.error("Company name is required");
+        return;
+      }
       if (!companyName) {
         toast.error("Please enter your company name");
         return;
@@ -188,7 +180,7 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
         if (updateError) throw updateError;
 
         toast.success("Setup completed successfully!");
-        onOpenChange(false);
+        navigate('/admin/dashboard');
       } catch (error: any) {
         console.error('Error completing setup:', error);
         toast.error(error.message || "Failed to complete setup");
@@ -198,208 +190,156 @@ export const SignupWalkthrough = ({ open, onOpenChange, userProfile }: SignupWal
     }
   };
 
-  const addMember = () => {
-    if (!newMemberEmail) {
-      toast.error("Please enter an email address");
-      return;
-    }
-    const fullEmail = `${newMemberEmail}@${emailDomain}`;
-    if (members.some((m) => m.email === fullEmail)) {
-      toast.error("This email has already been added");
-      return;
-    }
-    setMembers([...members, { email: fullEmail, role: "agent" }]);
-    setNewMemberEmail("");
-  };
-
-  const removeMember = (email: string) => {
-    setMembers(members.filter((m) => m.email !== email));
-  };
-
-  // Handle dialog close attempts
-  const handleOpenChange = (newOpen: boolean) => {
-    // If trying to close (newOpen is false)
-    if (!newOpen) {
-      // If on first step, prevent closing and show message
-      if (step === 1) {
-        toast.error("Please complete the company setup first");
-        return;
-      }
-      
-      // For later steps, confirm before closing
-      if (window.confirm("Are you sure you want to exit the setup? Your progress will be lost.")) {
-        // Reset state when confirmed
-        setStep(1);
-        setCompanyName("");
-        setTeamName("");
-        setMembers([]);
-        setNewMemberEmail("");
-        onOpenChange(false);
-      }
-    } else {
-      onOpenChange(true);
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800" onPointerDownOutside={e => {
-        // Prevent closing on clicking outside if on first step
-        if (step === 1) {
-          e.preventDefault();
-          toast.error("Please complete the company setup first");
-        }
-      }}>
-        {step === 1 && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-gray-900 dark:text-white">Welcome to Your Support Desk</DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-gray-300">
-                Let's start by getting to know you and your company.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-gray-900 dark:text-white">First Name</Label>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            {step === 1 ? "Welcome to Your Support Desk" : step === 2 ? "Create Your Team" : "Review and Finish"}
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            {step === 1 
+              ? "Let's start by getting to know you and your company."
+              : step === 2 
+                ? "Add team members to get started quickly."
+                : "Review your setup before finishing."}
+          </p>
+        </div>
+
+        <div className="mt-8 space-y-6">
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="firstName" className="text-gray-900">First Name *</Label>
                 <Input
                   id="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Enter your first name"
-                  autoFocus
-                  disabled={isLoading}
-                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="mt-1"
+                  placeholder="John"
+                  required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-gray-900 dark:text-white">Last Name</Label>
+              <div>
+                <Label htmlFor="lastName" className="text-gray-900">Last Name *</Label>
                 <Input
                   id="lastName"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Enter your last name"
-                  disabled={isLoading}
-                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="mt-1"
+                  placeholder="Doe"
+                  required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyName" className="text-gray-900 dark:text-white">Company Name</Label>
+              <div>
+                <Label htmlFor="companyName" className="text-gray-900">Company Name *</Label>
                 <Input
                   id="companyName"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Enter your company name"
-                  disabled={isLoading}
-                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="mt-1"
+                  placeholder="Acme Inc."
+                  required
                 />
               </div>
+              <p className="text-sm text-gray-500">* Required fields</p>
             </div>
-          </>
-        )}
+          )}
 
-        {step === 2 && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-gray-900 dark:text-white">Create Your First Team</DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-gray-300">
-                Teams help organize your support staff effectively.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="teamName" className="text-gray-900 dark:text-white">Team Name</Label>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="teamName" className="text-gray-900">Team Name</Label>
                 <Input
                   id="teamName"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="e.g., Customer Support"
-                  autoFocus
-                  disabled={isLoading}
-                  className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="mt-1"
+                  placeholder="Support Team"
                 />
               </div>
-            </div>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-gray-900 dark:text-white">Invite Team Members</DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-gray-300">
-                Add members to your {teamName} team.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    value={newMemberEmail}
-                    onChange={(e) => {
-                      // Remove any @ symbols or spaces from input
-                      const sanitizedInput = e.target.value.replace(/[@\s]/g, '');
-                      setNewMemberEmail(sanitizedInput);
-                    }}
-                    placeholder="Enter username"
-                    type="text"
-                    autoFocus
-                    disabled={isLoading}
-                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-[100px]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                    @{emailDomain}
-                  </span>
-                </div>
-                <Button onClick={addMember} size="icon" variant="outline" disabled={isLoading}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                {members.map((member) => (
-                  <div
-                    key={member.email}
-                    className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded-md"
-                  >
-                    <span className="text-sm text-gray-900 dark:text-white">{member.email}</span>
+              <div>
+                <Label className="text-gray-900">Team Members</Label>
+                <div className="mt-2 space-y-2">
+                  {members.map((member, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Input
+                        value={member.email}
+                        readOnly
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setMembers(members.filter((_, i) => i !== index));
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      placeholder="team@company.com"
+                      className="flex-1"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeMember(member.email)}
-                      disabled={isLoading}
+                      onClick={() => {
+                        if (newMemberEmail) {
+                          setMembers([...members, { email: newMemberEmail, role: "agent" }]);
+                          setNewMemberEmail("");
+                        }
+                      }}
                     >
-                      <X className="h-4 w-4" />
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-          </>
-        )}
+          )}
 
-        <DialogFooter>
-          <div className="flex justify-end gap-2 w-full">
-            {step > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => setStep((prev) => (prev - 1) as Step)}
-                disabled={isLoading}
-                className="text-gray-700 hover:text-gray-900"
-              >
-                Back
-              </Button>
-            )}
-            <Button 
-              onClick={handleNext} 
-              disabled={isLoading}
-              variant="default"
-              className="bg-indigo-600 text-white hover:bg-indigo-700"
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-gray-900">Company Details</h3>
+                <p className="text-sm text-gray-500">{companyName}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-900">Team</h3>
+                <p className="text-sm text-gray-500">{teamName}</p>
+                <ul className="mt-2 text-sm text-gray-500">
+                  {members.map((member, index) => (
+                    <li key={index}>{member.email}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setStep((s) => Math.max(1, s - 1) as Step)}
+              disabled={step === 1 || isLoading}
             >
-              {isLoading ? "Please wait..." : step === 3 ? "Complete Setup" : "Next"}
+              Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={isLoading}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {isLoading ? "Loading..." : step === 3 ? "Finish" : "Next"}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 };

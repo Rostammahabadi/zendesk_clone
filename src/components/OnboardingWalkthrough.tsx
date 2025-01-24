@@ -7,22 +7,27 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
-interface OnboardingWalkthroughProps {
-  isOpen: boolean;
-  onComplete: (data: OnboardingData) => void;
-  teams?: {
-    id: number;
-    name: string;
-  }[];
-  userEmail?: string;
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabaseClient";
+import { toast } from "sonner";
+import { useUpdateUser } from "../hooks/queries/useUsers";
+import { useAddTeamMember } from "../hooks/queries/useTeams";
+
+interface Team {
+  id: number;
+  name: string;
+  company_id: string;
 }
+
 type OnboardingData = {
   firstName: string;
   lastName: string;
   teamId?: number;
   phoneNumber?: string;
 };
+
 const STEPS = [
   {
     title: "Welcome! Let's get to know you",
@@ -37,12 +42,14 @@ const STEPS = [
     subtitle: "How can your teammates reach you?",
   },
 ];
-export function OnboardingWalkthrough({
-  isOpen,
-  onComplete,
-  teams = [],
-}: OnboardingWalkthroughProps) {
+
+export function OnboardingWalkthrough() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const updateUser = useUpdateUser();
+  const addTeamMember = useAddTeamMember();
   const [step, setStep] = useState(1);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [formData, setFormData] = useState<OnboardingData>({
     firstName: "",
     lastName: "",
@@ -50,6 +57,43 @@ export function OnboardingWalkthrough({
     phoneNumber: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch teams when component mounts
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        // First get the user's company_id
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('company_id')
+          .eq('id', user?.id)
+          .single();
+
+        if (userError) throw userError;
+        if (!userData?.company_id) {
+          console.error('No company ID found for user');
+          return;
+        }
+
+        // Then fetch teams for that company
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('teams')
+          .select('*')
+          .eq('company_id', userData.company_id);
+
+        if (teamsError) throw teamsError;
+        setTeams(teamsData || []);
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+        toast.error('Failed to load teams');
+      }
+    };
+
+    if (user?.id) {
+      fetchTeams();
+    }
+  }, [user?.id]);
+
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
     if (step === 1) {
@@ -71,21 +115,61 @@ export function OnboardingWalkthrough({
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  const handleNext = () => {
+
+  const handleNext = async () => {
     if (validateStep()) {
       if (step === STEPS.length) {
-        onComplete(formData);
+        try {
+          // Update user with the collected information
+          await updateUser.mutateAsync({
+            userId: user?.id || '',
+            userData: {
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone_number: formData.phoneNumber,
+            }
+          });
+          
+          // If a team was selected, add the user to the team
+          if (formData.teamId) {
+            await addTeamMember.mutateAsync({
+              teamId: formData.teamId.toString(),
+              userId: user?.id || ''
+            });
+          }
+          
+          // Fetch updated user data and store in localStorage
+          const { data: updatedUserData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user?.id)
+            .single();
+            
+          if (userError) throw userError;
+          
+          // Clear and update localStorage with new user data
+          localStorage.removeItem('userData');
+          localStorage.setItem('userData', JSON.stringify(updatedUserData));
+          
+          toast.success("Profile updated successfully!");
+          // Navigate to the appropriate dashboard based on role
+          navigate(`/${user?.user_metadata.role}/dashboard`);
+        } catch (error) {
+          console.error('Error updating user:', error);
+          toast.error("Failed to update profile");
+        }
       } else {
         setStep(step + 1);
       }
     }
   };
+
   const handleSkip = () => {
     setStep(step + 1);
   };
-  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
         {/* Progress bar */}
         <div className="h-1 bg-gray-200 dark:bg-gray-700">
@@ -191,6 +275,11 @@ export function OnboardingWalkthrough({
                     ))}
                   </select>
                 </div>
+                {teams.length === 0 && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    No teams available. Teams can be created in the dashboard after setup.
+                  </p>
+                )}
               </div>
             )}
             {step === 3 && (

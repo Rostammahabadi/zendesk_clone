@@ -13,6 +13,8 @@ import { TeamPage } from '../components/teams/TeamPage';
 import { AgentsPage } from '../components/agents/AgentsPage';
 import { KnowledgeBase } from '../components/knowledge/KnowledgeBase';
 import { useAuth } from '../hooks/useAuth';
+import { SignupWalkthrough } from '../components/signup/SignupWalkthrough';
+import { OnboardingWalkthrough } from '../components/OnboardingWalkthrough';
 
 function RootRedirect() {
   const { user, isLoading } = useAuth();
@@ -36,6 +38,14 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootRedirect />,
+  },
+  {
+    path: '/onboarding',
+    element: <OnboardingWalkthrough />
+  },
+  {
+    path: '/signup',
+    element: <SignupWalkthrough />
   },
   {
     path: '/login',

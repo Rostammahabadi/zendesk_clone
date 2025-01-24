@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getEmailError } from '../utils/emailValidation'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { SignupWalkthrough } from './signup/SignupWalkthrough'
-import { OnboardingWalkthrough } from './OnboardingWalkthrough'
 import { toast } from 'sonner'
 
 interface AuthError {
@@ -13,13 +11,6 @@ interface AuthError {
 interface ValidationErrors {
   email?: string
   password?: string[]
-}
-
-interface OnboardingData {
-  firstName: string
-  lastName: string
-  teamId?: number
-  phoneNumber?: string
 }
 
 interface UserProfile {
@@ -44,9 +35,7 @@ export const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [showWalkthrough, setShowWalkthrough] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [_, setUserProfile] = useState<UserProfile | null>(null)
 
   // Check for error parameter in URL
   useEffect(() => {
@@ -108,14 +97,6 @@ export const LoginPage = () => {
       validateEmail(email) &&
       validatePassword(password).length === 0
     )
-  }
-
-  const updateUserData = async (data: OnboardingData) => {
-    await supabase.from('users').update({
-      first_name: data.firstName,
-      last_name: data.lastName,
-      phone_number: data.phoneNumber,
-    }).eq('id', userProfile?.id)
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -232,7 +213,7 @@ export const LoginPage = () => {
           toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
           
           setUserProfile(newProfile)
-          setShowOnboarding(true)
+          navigate('/onboarding')
         } else {
           // 5b) No matching company => user *must* create one.
           // Because your schema requires company_id (NOT NULL) for any user,
@@ -255,7 +236,7 @@ export const LoginPage = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          setShowWalkthrough(true)
+          navigate('/signup')
         }
       }
     } catch (error) {
@@ -310,41 +291,6 @@ export const LoginPage = () => {
     } catch (error) {
       setError((error as AuthError).message)
       setIsLoading(false)
-    }
-  }
-
-  const handleWalkthroughComplete = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('No session found')
-
-      // Get user's role from users table
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('role, company_id')
-        .eq('id', session.user.id)
-        .single()
-
-      if (userError) throw userError
-      if (!user) throw new Error('User not found')
-
-      // Update user metadata with role and company_id
-      await supabase.auth.updateUser({
-        data: { 
-          role: user.role.toLowerCase(),
-          company_id: user.company_id
-        }
-      })
-
-      // Wait a brief moment to ensure metadata is updated
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Navigate based on role
-      handleNavigateByRole(user.role)
-    } catch (error) {
-      console.error('Error completing setup:', error)
-      // Navigate to default dashboard if role fetch fails
-      navigate('/')
     }
   }
 
@@ -494,34 +440,6 @@ export const LoginPage = () => {
           </form>
         </div>
       </div>
-
-      <SignupWalkthrough 
-        open={showWalkthrough} 
-        onOpenChange={(open) => {
-          setShowWalkthrough(open)
-          if (!open) handleWalkthroughComplete()
-        }}
-        userProfile={userProfile ?? {
-          id: '',
-          email: '',
-          first_name: null,
-          last_name: null,
-          role: 'agent',
-          company_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }}
-      />
-
-      <OnboardingWalkthrough
-        isOpen={showOnboarding}
-        onComplete={(data) => {
-          setShowOnboarding(false)
-          updateUserData(data)
-          handleWalkthroughComplete()
-        }}
-        userEmail={userProfile?.email}
-      />
     </>
   )
 } 

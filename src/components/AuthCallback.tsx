@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import * as Sentry from "@sentry/react";
-import { SignupWalkthrough } from './signup/SignupWalkthrough';
 
 interface UserProfile {
   id: string;
@@ -23,8 +22,7 @@ interface Company {
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [showWalkthrough, setShowWalkthrough] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [_, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -49,13 +47,9 @@ export const AuthCallback = () => {
           .eq('domain', emailDomain)
           .single() as { data: Company | null; error: any }
 
-        if (companyError) throw companyError
-
-        // If no company found with this domain, sign out and redirect to error
-        if (!company) {
-          await supabase.auth.signOut()
-          navigate('/login?error=invalid_domain')
-          return
+        // Ignore PGRST116 (not found) error as it's expected for new domains
+        if (companyError && companyError.code !== 'PGRST116') {
+          throw companyError
         }
 
         // Check if user already has a profile
@@ -69,8 +63,34 @@ export const AuthCallback = () => {
           throw profileError
         }
 
-        // If user doesn't have a profile, create one and show walkthrough
-        if (!existingProfile) {
+        // If user already has a profile, navigate to their dashboard
+        if (existingProfile) {
+          // Also update their metadata to ensure it's in sync
+          await supabase.auth.updateUser({
+            data: { 
+              role: existingProfile.role.toLowerCase(),
+              company_id: existingProfile.company_id
+            }
+          })
+
+          // Clear cached user data to force a fresh fetch
+          localStorage.removeItem('userData')
+
+          if (existingProfile.role === 'agent') {
+            navigate('/agent/dashboard')
+          } else if (existingProfile.role === 'admin') {
+            navigate('/admin/dashboard')
+          } else if (existingProfile.role === 'customer') {
+            navigate('/customer/dashboard')
+          } else {
+            navigate('/dashboard')
+          }
+          return
+        }
+
+        // For new users:
+        if (company) {
+          // Company exists - create user profile and show onboarding
           const { data: newProfile, error: createError } = await supabase
             .from('users')
             .insert({
@@ -83,19 +103,23 @@ export const AuthCallback = () => {
             .single()
 
           if (createError) throw createError
+
+          // Update user metadata right after creating profile
+          await supabase.auth.updateUser({
+            data: { 
+              role: 'agent',
+              company_id: company.id
+            }
+          })
+
+          // Clear cached user data to force a fresh fetch
+          localStorage.removeItem('userData')
+
           setUserProfile(newProfile)
-          setShowWalkthrough(true)
+          navigate('/onboarding')
         } else {
-          // Navigate based on role
-          if (existingProfile.role === 'agent') {
-            navigate('/agent/dashboard')
-          } else if (existingProfile.role === 'admin') {
-            navigate('/admin/dashboard')
-          } else if (existingProfile.role === 'customer') {
-            navigate('/customer/dashboard')
-          } else {
-            navigate('/dashboard')
-          }
+          // No company exists - redirect to signup walkthrough
+          navigate('/signup')
         }
       } catch (error) {
         console.error('Auth callback error:', error)
@@ -107,53 +131,11 @@ export const AuthCallback = () => {
       }
     }
 
+    // Only run if we have either hash or search params
     if (location.hash || location.search) {
       handleCallback()
     }
-  }, [location.hash, location.search, navigate])
-
-  const handleWalkthroughComplete = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('No session found')
-
-      // Get user's role from users table
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('role, company_id')
-        .eq('id', session.user.id)
-        .single()
-
-      if (userError) throw userError
-      if (!user) throw new Error('User not found')
-
-      // Update user metadata with role
-      await supabase.auth.updateUser({
-        data: { 
-          role: user.role.toLowerCase(),
-          company_id: user.company_id
-        }
-      })
-
-      // Navigate based on role
-      if (user.role === 'agent') {
-        navigate('/agent/dashboard')
-      } else if (user.role === 'admin') {
-        navigate('/admin/dashboard')
-      } else if (user.role === 'customer') {
-        navigate('/customer/dashboard')
-      } else {
-        navigate('/dashboard')
-      }
-    } catch (error) {
-      console.error('Error completing setup:', error)
-      Sentry.captureException(error, {
-        tags: { component: 'AuthCallback' }
-      })
-      // Navigate to default dashboard if role fetch fails
-      navigate('/dashboard')
-    }
-  }
+  }, [navigate]) // Only depend on navigate since we access location inside
 
   return (
     <>
@@ -165,17 +147,6 @@ export const AuthCallback = () => {
           </div>
         </div>
       </div>
-
-      {userProfile && (
-        <SignupWalkthrough 
-          open={showWalkthrough} 
-          onOpenChange={(open) => {
-            setShowWalkthrough(open)
-            if (!open) handleWalkthroughComplete()
-          }}
-          userProfile={userProfile}
-        />
-      )}
     </>
   )
 } 
