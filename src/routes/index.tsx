@@ -12,32 +12,15 @@ import { TicketDetail } from '../components/tickets/TicketDetail';
 import { TeamPage } from '../components/teams/TeamPage';
 import { AgentsPage } from '../components/agents/AgentsPage';
 import { KnowledgeBase } from '../components/knowledge/KnowledgeBase';
-import { useAuth } from '../hooks/useAuth';
 import { SignupWalkthrough } from '../components/signup/SignupWalkthrough';
 import { OnboardingWalkthrough } from '../components/OnboardingWalkthrough';
+import SupportFAQPage from '../components/homepage/SupportFAQPage';
 
-function RootRedirect() {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Navigate to={`/${user.user_metadata.role}/dashboard`} replace />;
-}
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <RootRedirect />,
+    element: <SupportFAQPage />,
   },
   {
     path: '/onboarding',
@@ -46,6 +29,10 @@ export const router = createBrowserRouter([
   {
     path: '/signup',
     element: <SignupWalkthrough />
+  },
+  {
+    path: '/customer/login',
+    element: <LoginPage />,
   },
   {
     path: '/login',
