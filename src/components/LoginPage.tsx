@@ -255,13 +255,13 @@ export const LoginPage = () => {
         navigate('/admin/dashboard');
         break;
       case 'agent':
-        window.location.href = '/';  // Use window.location for full page reload
+        navigate('/agent/dashboard');
         break;
       case 'customer':
-        window.location.href = '/';  // Use window.location for full page reload
+        navigate('/customer/dashboard');
         break;
       default:
-        window.location.href = '/';  // Use window.location for full page reload
+        navigate('/customer/dashboard');
     }
   }
 

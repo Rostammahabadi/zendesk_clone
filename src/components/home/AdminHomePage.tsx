@@ -1,9 +1,5 @@
 import {
   Loader2,
-  Users,
-  Activity,
-  Clock,
-  CheckCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NewTicketModal } from "../tickets/NewTicketModal";
@@ -23,92 +19,21 @@ import {
   Cell,
 } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
+import { useTicketStats } from "../../hooks/queries/useTicketStats";
+import { useTicketTypeStats } from "../../hooks/queries/useTicketTypeStats";
+import { useAuth } from "../../hooks/useAuth";
 
 export function AdminHomePage() {
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { data: ticketStats, isLoading: isLoadingStats } = useTicketStats();
+  const { data: ticketTypeStats, isLoading: isLoadingTypeStats } = useTicketTypeStats();
+  const { userData } = useAuth();
 
-  const monthlyTickets = [
-    {
-      name: "Jan",
-      tickets: 65,
-    },
-    {
-      name: "Feb",
-      tickets: 59,
-    },
-    {
-      name: "Mar",
-      tickets: 80,
-    },
-    {
-      name: "Apr",
-      tickets: 81,
-    },
-    {
-      name: "May",
-      tickets: 56,
-    },
-    {
-      name: "Jun",
-      tickets: 95,
-    },
-  ];
-  const categoryData = [
-    {
-      name: "Technical",
-      value: 35,
-    },
-    {
-      name: "Billing",
-      value: 25,
-    },
-    {
-      name: "Account",
-      value: 20,
-    },
-    {
-      name: "Feature",
-      value: 15,
-    },
-    {
-      name: "Other",
-      value: 5,
-    },
-  ];
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
-  const teamMetrics = [
-    {
-      label: "Total Active Tickets",
-      value: "47",
-      change: "+12%",
-      isPositive: true,
-      icon: Activity,
-    },
-    {
-      label: "Avg Response Time",
-      value: "11 min",
-      change: "-8%",
-      isPositive: true,
-      icon: Clock,
-    },
-    {
-      label: "Resolution Rate",
-      value: "94%",
-      change: "+5%",
-      isPositive: true,
-      icon: CheckCircle,
-    },
-    {
-      label: "Active Agents",
-      value: "18",
-      change: "+2",
-      isPositive: true,
-      icon: Users,
-    },
-  ];
+  
 
   useEffect(() => {
     const fetchAgents = async () => {
@@ -116,17 +41,18 @@ export function AdminHomePage() {
         const { data: agentsData, error } = await supabase
           .from('users')
           .select(`
-          *,
-          user_skills (
-            id,
-            proficiency,
-            skills (
+            *,
+            user_skills (
               id,
-              name
+              proficiency,
+              skills (
+                id,
+                name
+              )
             )
-          )
-        `)
-          .eq('role', 'agent');
+          `)
+          .eq('role', 'agent')
+          .eq('company_id', userData?.company_id);
 
         if (error) throw error;
 
@@ -153,10 +79,12 @@ export function AdminHomePage() {
       }
     };
 
-    fetchAgents();
-  }, []);
+    if (userData?.company_id) {
+      fetchAgents();
+    }
+  }, [userData?.company_id]);
 
-  if (isLoading) {
+  if (isLoading || isLoadingStats || isLoadingTypeStats) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500 dark:text-blue-400" />
@@ -174,68 +102,41 @@ export function AdminHomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Total Tickets</h3>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">124</p>
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{ticketStats?.total || 0}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Open Tickets</h3>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400">45</p>
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">{ticketStats?.open || 0}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Pending Tickets</h3>
-            <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">28</p>
+            <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{ticketStats?.pending || 0}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Resolved Today</h3>
-            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">51</p>
+            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{ticketStats?.resolvedToday || 0}</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {teamMetrics.map((metric) => (
-            <div
-              key={metric.label}
-              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <metric.icon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                <span
-                  className={`text-sm ${metric.isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                >
-                  {metric.change}
-                </span>
-              </div>
-              <div className="mt-4">
-                <div className="text-2xl font-bold dark:text-white">
-                  {metric.value}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {metric.label}
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
         {/* Ticket Trend */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-medium mb-4 dark:text-white">
-              Ticket Trend
+              Ticket Trends
             </h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyTickets}>
+                <LineChart
+                  data={ticketStats?.monthlyTrends}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    style={{
-                      fill: "rgb(107 114 128)",
-                    }}
-                  />
-                  <YAxis
-                    style={{
-                      fill: "rgb(107 114 128)",
-                    }}
-                  />
+                  <XAxis dataKey="name" />
+                  <YAxis />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgb(31 41 55)",
@@ -247,8 +148,8 @@ export function AdminHomePage() {
                   <Line
                     type="monotone"
                     dataKey="tickets"
-                    stroke="#0088FE"
-                    strokeWidth={2}
+                    stroke="#8884d8"
+                    activeDot={{ r: 8 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -262,7 +163,7 @@ export function AdminHomePage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={ticketTypeStats}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -273,7 +174,7 @@ export function AdminHomePage() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {categoryData.map((_, index) => (
+                    {ticketTypeStats?.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}

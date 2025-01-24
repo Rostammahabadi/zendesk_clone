@@ -57,7 +57,7 @@ const recentActivity = [
 export function CustomerHomePage() {
   const { userData } = useAuth();
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('1m');
-  const { data: stats, isLoading } = useTicketStats(selectedTimeFrame);
+  const { data: stats, isLoading } = useTicketStats();
   const supportResources = [
     {
       title: "Knowledge Base",
@@ -75,19 +75,19 @@ export function CustomerHomePage() {
   const ticketStats = [
     {
       label: "Open Tickets",
-      count: stats?.openTickets ?? 0,
+      count: stats?.open ?? 0,
       color: "text-blue-500 dark:text-blue-400",
       bgColor: "bg-blue-50 dark:bg-blue-900/20",
     },
     {
-      label: "Resolved Tickets",
-      count: stats?.resolvedTickets ?? 0,
+      label: "Resolved Today",
+      count: stats?.resolvedToday ?? 0,
       color: "text-green-500 dark:text-green-400",
       bgColor: "bg-green-50 dark:bg-green-900/20",
     },
     {
       label: "Pending Responses",
-      count: stats?.pendingTickets ?? 0,
+      count: stats?.pending ?? 0,
       color: "text-yellow-500 dark:text-yellow-400",
       bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
     },

@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User, Bell, Wrench, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
 import { useSkills, useCreateSkill, useDeleteSkill } from "../../hooks/queries/useSkills";
+import { useUpdateUser } from "../../hooks/queries/useUsers";
 
 const settingsSections = [
   {
@@ -27,12 +28,64 @@ const settingsSections = [
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState("profile");
   const [newSkillName, setNewSkillName] = useState("");
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: ""
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { userData } = useAuth();
   const isAdmin = userData?.role === 'admin';
   const { data: skills, isLoading: isLoadingSkills } = useSkills();
   const createSkill = useCreateSkill();
   const deleteSkill = useDeleteSkill();
+  const updateUser = useUpdateUser();
+
+  // Initialize form data when userData changes
+  useEffect(() => {
+    if (userData) {
+      setFormData({
+        first_name: userData.first_name || "",
+        last_name: userData.last_name || "",
+        email: userData.email || "",
+        role: userData.role || ""
+      });
+    }
+  }, [userData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveChanges = async () => {
+    if (!userData?.id) return;
+    
+    try {
+      await updateUser.mutateAsync({
+        userId: userData.id,
+        userData: {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email
+        }
+      });
+      
+      // Clear the cached user data to force a refresh
+      localStorage.removeItem('userData');
+      
+      // Force a page refresh to reload the user data
+      window.location.reload();
+      
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile');
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,11 +210,27 @@ export function SettingsPage() {
               <div className="grid grid-cols-1 gap-6 max-w-2xl">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Full Name
+                    First Name
                   </label>
                   <input
                     type="text"
-                    defaultValue="John Doe"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 
+                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                       focus:outline-none focus:ring-2 focus:ring-blue-500 
                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -173,7 +242,9 @@ export function SettingsPage() {
                   </label>
                   <input
                     type="email"
-                    defaultValue="john.doe@example.com"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                       focus:outline-none focus:ring-2 focus:ring-blue-500 
                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -185,15 +256,21 @@ export function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue="Support Agent"
+                    name="role"
+                    value={formData.role}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                       focus:outline-none focus:ring-2 focus:ring-blue-500 
                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    readOnly
                   />
                 </div>
                 <div className="pt-4">
-                  <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                    Save Changes
+                  <button 
+                    onClick={handleSaveChanges}
+                    disabled={updateUser.isPending}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updateUser.isPending ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </div>
