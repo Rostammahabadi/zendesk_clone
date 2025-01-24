@@ -17,15 +17,24 @@ export const useTicketStats = () => {
   const { userData } = useAuth();
   
   return useQuery({
-    queryKey: ['ticketStats', userData?.company_id],
+    queryKey: ['ticketStats', userData?.company_id, userData?.id, userData?.role],
     queryFn: async (): Promise<TicketStats> => {
       if (!userData?.company_id) throw new Error('No company ID found');
 
-      // Get all tickets for the company
-      const { data: tickets, error } = await supabase
+      // Get tickets based on user role
+      const query = supabase
         .from('tickets')
         .select('*')
         .eq('company_id', userData.company_id);
+
+      // Filter tickets based on role
+      if (userData.role === 'agent') {
+        query.eq('assigned_to', userData.id);
+      } else {
+        query.eq('created_by', userData.id);
+      }
+
+      const { data: tickets, error } = await query;
 
       if (error) throw error;
 
@@ -56,7 +65,9 @@ export const useTicketStats = () => {
       return {
         total: tickets.length,
         open: tickets.filter(ticket => ticket.status === 'open').length,
-        pending: tickets.filter(ticket => ticket.status === 'pending').length,
+        pending: tickets.filter(ticket => 
+            ticket.status === 'in_progress'
+        ).length,
         resolvedToday: tickets.filter(ticket => 
           ticket.status === 'closed' && 
           new Date(ticket.updated_at) >= today
@@ -64,6 +75,6 @@ export const useTicketStats = () => {
         monthlyTrends
       };
     },
-    enabled: !!userData?.company_id,
+    enabled: !!userData?.company_id && !!userData?.id,
   });
 }; 
