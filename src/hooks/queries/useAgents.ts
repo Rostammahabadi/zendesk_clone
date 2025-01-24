@@ -51,7 +51,6 @@ export const useAgent = (agentId: string) => {
 
 export const useCreateAgent = () => {
   const queryClient = useQueryClient();
-  const { userData } = useAuth();
   
   return useMutation({
     mutationFn: async (agent: Agent) => {

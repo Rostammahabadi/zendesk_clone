@@ -25,24 +25,19 @@ type FormData = {
   avatarUrl: string;
   phoneNumber: string;
 };
-const ROLES = [
-  {
-    value: "agent",
-    label: "Support Agent",
-  },
-  {
-    value: "senior_agent",
-    label: "Senior Agent",
-  },
-  {
-    value: "team_lead",
-    label: "Team Lead",
-  },
-  {
-    value: "admin",
-    label: "Administrator",
-  },
-];
+
+const formatPhoneNumber = (value: string) => {
+  // Remove all non-digits
+  const phoneNumber = value.replace(/\D/g, '');
+  
+  // Format according to length
+  if (phoneNumber.length < 4) return phoneNumber;
+  if (phoneNumber.length < 7) {
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+  }
+  return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+};
+
 export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps) {
   const { userData } = useAuth();
   const [step, setStep] = useState(1);
@@ -51,12 +46,32 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
     email: "",
     firstName: "",
     lastName: "",
-    role: "",
+    role: "agent",
     title: "",
     avatarUrl: "",
     phoneNumber: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const resetForm = () => {
+    setStep(1);
+    setEmailUsername("");
+    setFormData({
+      email: "",
+      firstName: "",
+      lastName: "",
+      role: "agent",
+      title: "",
+      avatarUrl: "",
+      phoneNumber: "",
+    });
+    setErrors({});
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   // Extract domain from the current user's email
   const domain = userData?.email?.split('@')[1] || "company.com";
@@ -67,6 +82,14 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
     setFormData(prev => ({
       ...prev,
       email: username ? `${username}@${domain}` : ""
+    }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedNumber = formatPhoneNumber(e.target.value);
+    setFormData(prev => ({
+      ...prev,
+      phoneNumber: formattedNumber
     }));
   };
 
@@ -84,9 +107,9 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
       if (!formData.title) newErrors.title = "Title is required";
       if (
         formData.phoneNumber &&
-        !/^\+?[\d\s-]{10,}$/.test(formData.phoneNumber)
+        !/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phoneNumber)
       )
-        newErrors.phoneNumber = "Please enter a valid phone number";
+        newErrors.phoneNumber = "Please enter a valid phone number in format (XXX) XXX-XXXX";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -103,7 +126,7 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleClose} />
       {/* Modal */}
       <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
         {/* Header */}
@@ -112,7 +135,7 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
             Add New Agent
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 text-gray-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <X className="w-5 h-5" />
@@ -223,34 +246,6 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Role
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        role: e.target.value,
-                      })
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.role ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                  >
-                    <option value="">Select a role</option>
-                    {ROLES.map((role) => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.role && (
-                    <p className="mt-1 text-sm text-red-500 flex items-center">
-                      <AlertCircle className="w-4 h-4 mr-1" />
-                      {errors.role}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Title
                   </label>
                   <div className="relative">
@@ -284,14 +279,10 @@ export function NewAgentModal({ isOpen, onClose, onSubmit }: NewAgentModalProps)
                     <input
                       type="tel"
                       value={formData.phoneNumber}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          phoneNumber: e.target.value,
-                        })
-                      }
+                      onChange={handlePhoneChange}
                       className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 transition-colors dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.phoneNumber ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"}`}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="(555) 123-4567"
+                      maxLength={14}
                     />
                   </div>
                   {errors.phoneNumber && (
