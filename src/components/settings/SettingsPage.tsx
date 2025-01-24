@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
-import { User, Bell } from "lucide-react";
+import { User, Bell, Wrench, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "sonner";
+import { useSkills, useCreateSkill, useDeleteSkill } from "../../hooks/queries/useSkills";
 
 const settingsSections = [
   {
@@ -15,12 +16,23 @@ const settingsSections = [
     label: "Notifications",
     icon: Bell,
   },
+  {
+    id: "skills",
+    label: "Skills",
+    icon: Wrench,
+    adminOnly: true,
+  },
 ];
 
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState("profile");
+  const [newSkillName, setNewSkillName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { userData } = useAuth();
+  const isAdmin = userData?.role === 'admin';
+  const { data: skills, isLoading: isLoadingSkills } = useSkills();
+  const createSkill = useCreateSkill();
+  const deleteSkill = useDeleteSkill();
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,15 +79,37 @@ export function SettingsPage() {
     }
   };
 
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createSkill.mutateAsync(newSkillName);
+      setNewSkillName("");
+      toast.success("Skill added successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add skill");
+    }
+  };
+
+  const handleDeleteSkill = async (skillId: number) => {
+    try {
+      await deleteSkill.mutateAsync(skillId);
+      toast.success("Skill deleted successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete skill");
+    }
+  };
+
   return (
-    <div className="flex-1 overflow-hidden flex">
+    <div className="flex-1 overflow-hidden flex h-full">
       {/* Settings Navigation */}
       <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="p-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Settings</h2>
         </div>
         <nav className="space-y-1 px-2">
-          {settingsSections.map((section) => (
+          {settingsSections
+            .filter(section => !section.adminOnly || isAdmin)
+            .map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
@@ -92,7 +126,7 @@ export function SettingsPage() {
         </nav>
       </div>
       {/* Settings Content */}
-      <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-800">
+      <div className="flex-1 p-6 bg-white dark:bg-gray-800 min-h-full">
         {activeSection === "profile" && (
           <div className="space-y-6">
             <div className="pb-5 border-b border-gray-200 dark:border-gray-700">
@@ -215,7 +249,63 @@ export function SettingsPage() {
             </div>
           </div>
         )}
-        {/* Other sections would be implemented similarly */}
+        {activeSection === "skills" && isAdmin && (
+          <div className="space-y-6">
+            <div className="pb-5 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Skills Management</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Manage the skills that can be assigned to agents in your organization
+              </p>
+            </div>
+
+            {/* Add new skill form */}
+            <form onSubmit={handleAddSkill} className="flex gap-2 max-w-md">
+              <input
+                type="text"
+                value={newSkillName}
+                onChange={(e) => setNewSkillName(e.target.value)}
+                placeholder="Enter skill name"
+                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="submit"
+                disabled={createSkill.isPending}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Skill
+              </button>
+            </form>
+
+            {/* Skills list */}
+            <div className="mt-6">
+              {isLoadingSkills ? (
+                <div className="text-gray-500 dark:text-gray-400">Loading skills...</div>
+              ) : skills?.length === 0 ? (
+                <div className="text-gray-500 dark:text-gray-400">No skills added yet</div>
+              ) : (
+                <ul className="space-y-2">
+                  {skills?.map((skill) => (
+                    <li
+                      key={skill.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                    >
+                      <span className="text-gray-900 dark:text-gray-100">{skill.name}</span>
+                      <button
+                        onClick={() => handleDeleteSkill(skill.id)}
+                        disabled={deleteSkill.isPending}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
         {(activeSection === "security" ||
           activeSection === "appearance" ||
           activeSection === "language" ||

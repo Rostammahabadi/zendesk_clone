@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userTeams, userRoles, skills, userSkills, ticketTags } from "./schema";
+import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userTeams, userRoles, skills, userSkills, ticketTags, agentTicketStats } from "./schema";
 
 export const ticketMessagesRelations = relations(ticketMessages, ({one}) => ({
 	user: one(users, {
@@ -33,6 +33,7 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	}),
 	userRoles: many(userRoles),
 	userSkills: many(userSkills),
+	agentTicketStats: many(agentTicketStats),
 }));
 
 export const ticketsRelations = relations(tickets, ({one, many}) => ({
@@ -114,14 +115,6 @@ export const userRolesRelations = relations(userRoles, ({one}) => ({
 	}),
 }));
 
-export const skillsRelations = relations(skills, ({one, many}) => ({
-	company: one(companies, {
-		fields: [skills.companyId],
-		references: [companies.id]
-	}),
-	userSkills: many(userSkills),
-}));
-
 export const userSkillsRelations = relations(userSkills, ({one}) => ({
 	skill: one(skills, {
 		fields: [userSkills.skillId],
@@ -133,6 +126,14 @@ export const userSkillsRelations = relations(userSkills, ({one}) => ({
 	}),
 }));
 
+export const skillsRelations = relations(skills, ({one, many}) => ({
+	userSkills: many(userSkills),
+	company: one(companies, {
+		fields: [skills.companyId],
+		references: [companies.id]
+	}),
+}));
+
 export const ticketTagsRelations = relations(ticketTags, ({one}) => ({
 	tag: one(tags, {
 		fields: [ticketTags.tagId],
@@ -141,5 +142,12 @@ export const ticketTagsRelations = relations(ticketTags, ({one}) => ({
 	ticket: one(tickets, {
 		fields: [ticketTags.ticketId],
 		references: [tickets.id]
+	}),
+}));
+
+export const agentTicketStatsRelations = relations(agentTicketStats, ({one}) => ({
+	user: one(users, {
+		fields: [agentTicketStats.agentId],
+		references: [users.id]
 	}),
 }));

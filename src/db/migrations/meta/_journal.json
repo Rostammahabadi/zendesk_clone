@@ -239,6 +239,20 @@
       "when": 1737659792817,
       "tag": "0033_complete_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1737736600350,
+      "tag": "0034_amusing_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1737736687350,
+      "tag": "0035_strong_genesis",
+      "breakpoints": true
     }
   ]
 }

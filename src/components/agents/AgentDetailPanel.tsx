@@ -5,8 +5,11 @@ import {
   Mail,
   Phone,
   Check,
+  Search,
 } from "lucide-react";
 import { useUpdateUser } from "../../hooks/queries/useUsers";
+import { useSkills, useCreateSkill, Skill } from "../../hooks/queries/useSkills";
+import { useUserSkills, useAddUserSkill, useRemoveUserSkill } from "../../hooks/queries/useUserSkills";
 import { toast } from "sonner";
 
 interface AgentDetailsPanelProps {
@@ -31,37 +34,14 @@ const unformatPhoneNumber = (value: string) => {
   return value.replace(/\D/g, "");
 };
 
-const skillCategories = [
-  {
-    name: "Technical",
-    skills: ["JavaScript", "React", "Node.js", "Python", "AWS", "Docker"],
-  },
-  {
-    name: "Soft Skills",
-    skills: [
-      "Communication",
-      "Leadership",
-      "Problem Solving",
-      "Time Management",
-    ],
-  },
-  {
-    name: "Products",
-    skills: ["Product A", "Product B", "Product C", "Product D"],
-  },
-];
-
 export function AgentDetailsPanel({
   agent,
   isOpen,
   onClose,
 }: AgentDetailsPanelProps) {
-  const [skills, setSkills] = useState<string[]>([
-    "Customer Service",
-    "Technical Support",
-  ]);
   const [showSkillSelector, setShowSkillSelector] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(skillCategories[0]);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     email: agent?.email || "",
@@ -69,11 +49,55 @@ export function AgentDetailsPanel({
   });
 
   const updateUser = useUpdateUser();
+  const { data: availableSkills = [], isLoading: isLoadingSkills } = useSkills();
+  const { data: userSkills = [], isLoading: isLoadingUserSkills } = useUserSkills(agent?.id);
+  const createSkill = useCreateSkill();
+  const addUserSkill = useAddUserSkill();
+  const removeUserSkill = useRemoveUserSkill();
+
+  const filteredSkills = availableSkills.filter(skill => 
+    skill.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleCreateSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSkillName.trim()) return;
+
+    try {
+      await createSkill.mutateAsync(newSkillName);
+      setNewSkillName("");
+      toast.success("Skill created successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create skill");
+    }
+  };
+
+  const handleSkillClick = async (skill: Skill) => {
+    const hasSkill = userSkills.some(us => us.skill_id === skill.id);
+    
+    try {
+      if (hasSkill) {
+        await removeUserSkill.mutateAsync({
+          userId: String(agent.id),
+          skillId: String(skill.id),
+        });
+        toast.success(`Removed ${skill.name} from ${agent.first_name}'s skills`);
+      } else {
+        await addUserSkill.mutateAsync({
+          userId: String(agent.id),
+          skillId: String(skill.id),
+        });
+        toast.success(`Added ${skill.name} to ${agent.first_name}'s skills`);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update skill");
+    }
+  };
 
   const handleSave = async () => {
     try {
       await updateUser.mutateAsync({
-        userId: agent.id,
+        userId: String(agent.id),
         userData: {
           email: formData.email,
           phone_number: unformatPhoneNumber(formData.phone),
@@ -210,55 +234,107 @@ export function AgentDetailsPanel({
                 className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center"
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Add Skill
+                Manage Skills
               </button>
             </div>
+
             {/* Skill selector */}
             {showSkillSelector && (
               <div className="mb-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="flex space-x-2 mb-4 overflow-x-auto">
-                  {skillCategories.map((category) => (
+                {/* Search and Add New Skill */}
+                <div className="space-y-4 mb-4">
+                  {/* Search Skills */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search skills..."
+                      className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Add New Skill */}
+                  <form onSubmit={handleCreateSkill} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newSkillName}
+                      onChange={(e) => setNewSkillName(e.target.value)}
+                      placeholder="New skill name..."
+                      className="flex-1 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                     <button
-                      key={category.name}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-1 text-sm rounded-full whitespace-nowrap ${selectedCategory.name === category.name ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"}`}
+                      type="submit"
+                      disabled={!newSkillName.trim() || createSkill.isPending}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      {category.name}
+                      Add
                     </button>
-                  ))}
+                  </form>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedCategory.skills.map((skill) => (
-                    <button
-                      key={skill}
-                      onClick={() => {
-                        if (!skills.includes(skill)) {
-                          setSkills([...skills, skill]);
-                        }
-                      }}
-                      className="text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                    >
-                      {skill}
-                    </button>
-                  ))}
+
+                {/* Skills List */}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {isLoadingSkills ? (
+                    <div className="text-center text-gray-500 dark:text-gray-400">
+                      Loading skills...
+                    </div>
+                  ) : filteredSkills.length === 0 ? (
+                    <div className="text-center text-gray-500 dark:text-gray-400">
+                      {searchQuery ? "No matching skills found" : "No skills available"}
+                    </div>
+                  ) : (
+                    filteredSkills.map((skill) => {
+                      const hasSkill = userSkills.some(us => us.skill_id === skill.id);
+                      return (
+                        <button
+                          key={skill.id}
+                          onClick={() => handleSkillClick(skill)}
+                          className="w-full text-left px-4 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white flex items-center justify-between group"
+                        >
+                          <span>{skill.name}</span>
+                          <span className={`text-blue-600 dark:text-blue-400 ${hasSkill ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            {hasSkill ? (
+                              <Check className="w-4 h-4" />
+                            ) : (
+                              "Add"
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
+
+            {/* Selected Skills */}
             <div className="flex flex-wrap gap-2">
-              {skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                >
-                  {skill}
-                  <button
-                    onClick={() => setSkills(skills.filter((s) => s !== skill))}
-                    className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+              {isLoadingUserSkills ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Loading skills...
+                </div>
+              ) : userSkills.length === 0 ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  No skills assigned
+                </div>
+              ) : (
+                userSkills.map((userSkill) => (
+                  <span
+                    key={userSkill.id}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
+                    {userSkill.skills.name}
+                    <button
+                      onClick={() => handleSkillClick(userSkill.skills)}
+                      className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </div>

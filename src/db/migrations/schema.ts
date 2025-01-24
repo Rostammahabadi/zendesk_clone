@@ -1,4 +1,4 @@
-import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, unique, bigint, uniqueIndex, serial, integer, primaryKey, pgView, json, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, serial, boolean, unique, bigint, integer, uniqueIndex, primaryKey, date, pgView, json, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const appPermission = pgEnum("app_permission", ['companies.insert', 'companies.select', 'companies.update', 'companies.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'teams.insert', 'teams.select', 'teams.update', 'teams.delete', 'user_teams.insert', 'user_teams.select', 'user_teams.update', 'user_teams.delete', 'tags.insert', 'tags.select', 'tags.update', 'tags.delete', 'tickets.insert', 'tickets.select', 'tickets.update', 'tickets.delete', 'ticket_messages.insert', 'ticket_messages.select', 'ticket_messages.update', 'ticket_messages.delete', 'ticket_events.insert', 'ticket_events.select', 'ticket_events.update', 'ticket_events.delete', 'ticket_tags.insert', 'ticket_tags.select', 'ticket_tags.update', 'ticket_tags.delete', 'user_roles.insert', 'user_roles.select', 'user_roles.update', 'user_roles.delete', 'skills.insert', 'skills.select', 'skills.update', 'skills.delete', 'user_skills.insert', 'user_skills.select', 'user_skills.update', 'user_skills.delete'])
@@ -158,7 +158,7 @@ export const userTeams = pgTable("user_teams", {
 ]);
 
 export const users = pgTable("users", {
-	id: uuid().primaryKey().notNull(),
+	id: uuid().defaultRandom().primaryKey().notNull(),
 	email: text().notNull(),
 	firstName: text("first_name"),
 	lastName: text("last_name"),
@@ -188,14 +188,15 @@ export const users = pgTable("users", {
 	pgPolicy("check_agent_role", { as: "permissive", for: "insert", to: ["authenticated"] }),
 ]);
 
-export const rolePermissions = pgTable("role_permissions", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity({ name: "role_permissions_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
-	role: appRole().notNull(),
-	permission: appPermission().notNull(),
-}, (table) => [
-	unique("role_permissions_role_permission_key").on(table.role, table.permission),
-]);
+export const faqs = pgTable("faqs", {
+	id: serial().primaryKey().notNull(),
+	category: varchar({ length: 255 }),
+	question: text().notNull(),
+	answer: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	published: boolean().default(true).notNull(),
+});
 
 export const userRoles = pgTable("user_roles", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
@@ -212,21 +213,16 @@ export const userRoles = pgTable("user_roles", {
 	pgPolicy("any_authenticated_user", { as: "permissive", for: "insert", to: ["authenticated"], withCheck: sql`(( SELECT auth.uid() AS uid) = user_id)`  }),
 	pgPolicy("insert_user_roles", { as: "permissive", for: "insert", to: ["anon"] }),
 	pgPolicy("Allow all users to insert into user_roles", { as: "permissive", for: "insert", to: ["anon", "authenticated"] }),
+	pgPolicy("new", { as: "permissive", for: "insert", to: ["public"] }),
 ]);
 
-export const skills = pgTable("skills", {
-	id: serial().primaryKey().notNull(),
-	companyId: uuid("company_id").notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+export const rolePermissions = pgTable("role_permissions", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity({ name: "role_permissions_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
+	role: appRole().notNull(),
+	permission: appPermission().notNull(),
 }, (table) => [
-	uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.companyId],
-			foreignColumns: [companies.id],
-			name: "skills_company_id_companies_id_fk"
-		}).onDelete("cascade"),
+	unique("role_permissions_role_permission_key").on(table.role, table.permission),
 ]);
 
 export const userSkills = pgTable("user_skills", {
@@ -248,6 +244,21 @@ export const userSkills = pgTable("user_skills", {
 		}).onDelete("cascade"),
 ]);
 
+export const skills = pgTable("skills", {
+	id: serial().primaryKey().notNull(),
+	companyId: uuid("company_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.companyId],
+			foreignColumns: [companies.id],
+			name: "skills_company_id_companies_id_fk"
+		}).onDelete("cascade"),
+]);
+
 export const ticketTags = pgTable("ticket_tags", {
 	ticketId: uuid("ticket_id").notNull(),
 	tagId: uuid("tag_id").notNull(),
@@ -266,6 +277,24 @@ export const ticketTags = pgTable("ticket_tags", {
 			name: "ticket_tags_ticket_id_tickets_id_fk"
 		}).onDelete("cascade"),
 	primaryKey({ columns: [table.ticketId, table.tagId], name: "ticket_tags_ticket_id_tag_id_pk"}),
+]);
+
+export const agentTicketStats = pgTable("agent_ticket_stats", {
+	agentId: uuid("agent_id").notNull(),
+	statsDate: date("stats_date").notNull(),
+	openCount: integer("open_count").default(0).notNull(),
+	resolvedCount: integer("resolved_count").default(0).notNull(),
+	pendingCount: integer("pending_count").default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_agent_ticket_stats_agent_id").using("btree", table.agentId.asc().nullsLast().op("uuid_ops")),
+	index("idx_agent_ticket_stats_stats_date").using("btree", table.statsDate.asc().nullsLast().op("date_ops")),
+	foreignKey({
+			columns: [table.agentId],
+			foreignColumns: [users.id],
+			name: "agent_ticket_stats_agent_id_users_id_fk"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.agentId, table.statsDate], name: "agent_ticket_stats_agent_id_stats_date_pk"}),
 ]);
 export const teamUserGroups = pgView("team_user_groups", {	teamName: text("team_name"),
 	teamId: uuid("team_id"),

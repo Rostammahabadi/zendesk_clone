@@ -1,8 +1,9 @@
-import { pgTable, serial, varchar, timestamp, uniqueIndex, uuid, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, uniqueIndex, uuid, foreignKey } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
 
+
 export const skills = pgTable("skills", {
-  id: serial().primaryKey().notNull(),
+  id: uuid("id").defaultRandom().primaryKey().notNull(),
   companyId: uuid("company_id").notNull(),
   name: varchar({ length: 100 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),

@@ -51,6 +51,8 @@ export const useAgent = (agentId: string) => {
 
 export const useCreateAgent = () => {
   const queryClient = useQueryClient();
+  const { userData } = useAuth();
+  
   return useMutation({
     mutationFn: async (agent: Agent) => {
       const { data: newUser, error } = await supabase.from('users').insert(agent).select().single();
@@ -64,7 +66,7 @@ export const useCreateAgent = () => {
       
       return newUser;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', userData?.company_id] }),
   });
 };
 
