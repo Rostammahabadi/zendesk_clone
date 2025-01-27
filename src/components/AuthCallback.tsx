@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import * as Sentry from "@sentry/react";
+import { toast } from 'sonner'
 
 interface UserProfile {
   id: string;
@@ -14,11 +15,6 @@ interface UserProfile {
   updated_at: string;
 }
 
-interface Company {
-  id: string;
-  name: string;
-}
-
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -28,8 +24,15 @@ export const AuthCallback = () => {
     const handleCallback = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw sessionError
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          toast.error('Failed to get session')
+          navigate('/login')
+          return
+        }
+        
         if (!session) {
+          console.error('No session found')
           navigate('/login')
           return
         }
@@ -37,7 +40,10 @@ export const AuthCallback = () => {
         // Get user's email domain
         const emailDomain = session.user.email?.split('@')[1].toLowerCase()
         if (!emailDomain) {
-          throw new Error('Invalid email format')
+          console.error('Invalid email format')
+          toast.error('Invalid email format')
+          navigate('/login')
+          return
         }
 
         // First check if user already exists in our database
@@ -48,30 +54,39 @@ export const AuthCallback = () => {
           .single()
 
         if (userError && userError.code !== 'PGRST116') {
-          throw userError
+          console.error('Error fetching user:', userError)
+          toast.error('Failed to fetch user data')
+          navigate('/login')
+          return
         }
 
         if (existingUser) {
           // User exists - update metadata and redirect to appropriate dashboard
-          await supabase.auth.updateUser({
-            data: { 
-              role: existingUser.role.toLowerCase(),
-              company_id: existingUser.company_id
+          try {
+            await supabase.auth.updateUser({
+              data: { 
+                role: existingUser.role.toLowerCase(),
+                company_id: existingUser.company_id
+              }
+            })
+
+            // Clear cached user data to force a fresh fetch
+            localStorage.removeItem('userData')
+
+            // Redirect to appropriate dashboard
+            if (existingUser.role === 'agent') {
+              navigate('/agent/dashboard')
+            } else if (existingUser.role === 'admin') {
+              navigate('/admin/dashboard')
+            } else if (existingUser.role === 'customer') {
+              navigate('/customer/dashboard')
+            } else {
+              navigate('/dashboard')
             }
-          })
-
-          // Clear cached user data to force a fresh fetch
-          localStorage.removeItem('userData')
-
-          // Redirect to appropriate dashboard
-          if (existingUser.role === 'agent') {
-            navigate('/agent/dashboard')
-          } else if (existingUser.role === 'admin') {
-            navigate('/admin/dashboard')
-          } else if (existingUser.role === 'customer') {
-            navigate('/customer/dashboard')
-          } else {
-            navigate('/dashboard')
+          } catch (updateError) {
+            console.error('Error updating user:', updateError)
+            toast.error('Failed to update user data')
+            navigate('/login')
           }
           return
         }
@@ -85,7 +100,12 @@ export const AuthCallback = () => {
             .eq('name', 'GauntletAI')
             .single()
 
-          if (companyError) throw companyError
+          if (companyError) {
+            console.error('Error fetching company:', companyError)
+            toast.error('Failed to fetch company data')
+            navigate('/login')
+            return
+          }
 
           // Create new gauntletai.com user as agent
           const { data: newProfile, error: createError } = await supabase
@@ -99,23 +119,34 @@ export const AuthCallback = () => {
             .select()
             .single()
 
-          if (createError) throw createError
+          if (createError) {
+            console.error('Error creating user:', createError)
+            toast.error('Failed to create user')
+            navigate('/login')
+            return
+          }
 
           // Update user metadata
-          await supabase.auth.updateUser({
-            data: { 
+          try {
+            await supabase.auth.updateUser({
+              data: { 
+                role: 'agent',
+                company_id: company.id
+              }
+            })
+
+            // Add user role
+            await supabase.from('user_roles').insert({
+              user_id: newProfile.id,
               role: 'agent',
-              company_id: company.id
-            }
-          })
+            })
 
-          // Add user role
-          await supabase.from('user_roles').insert({
-            user_id: newProfile.id,
-            role: 'agent',
-          })
-
-          setUserProfile(newProfile)
+            setUserProfile(newProfile)
+          } catch (updateError) {
+            console.error('Error updating user:', updateError)
+            toast.error('Failed to update user data')
+            navigate('/login')
+          }
         } else {
           // Create new non-gauntletai.com user as customer
           const { data: newProfile, error: createError } = await supabase
@@ -128,22 +159,33 @@ export const AuthCallback = () => {
             .select()
             .single()
 
-          if (createError) throw createError
+          if (createError) {
+            console.error('Error creating user:', createError)
+            toast.error('Failed to create user')
+            navigate('/login')
+            return
+          }
 
           // Update user metadata
-          await supabase.auth.updateUser({
-            data: { 
-              role: 'customer'
-            }
-          })
+          try {
+            await supabase.auth.updateUser({
+              data: { 
+                role: 'customer'
+              }
+            })
 
-          // Add user role
-          await supabase.from('user_roles').insert({
-            user_id: newProfile.id,
-            role: 'customer',
-          })
+            // Add user role
+            await supabase.from('user_roles').insert({
+              user_id: newProfile.id,
+              role: 'customer',
+            })
 
-          setUserProfile(newProfile)
+            setUserProfile(newProfile)
+          } catch (updateError) {
+            console.error('Error updating user:', updateError)
+            toast.error('Failed to update user data')
+            navigate('/login')
+          }
         }
 
         // All new users go to onboarding
@@ -160,9 +202,7 @@ export const AuthCallback = () => {
     }
 
     // Only run if we have either hash or search params
-    if (location.hash || location.search) {
-      handleCallback()
-    }
+    handleCallback()
   }, [navigate]) // Only depend on navigate since we access location inside
 
   return (

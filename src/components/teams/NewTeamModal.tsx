@@ -76,18 +76,26 @@ export function NewTeamModal({ isOpen, onClose }: NewTeamModalProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      setErrors({ name: "Team name is required" });
+      return;
+    }
+
     createTeam(
       { 
-        name: formData.name, 
-        memberIds: formData.members.map(member => member.id)
+        name: formData.name.trim(), 
+        memberIds: formData.members.map(m => m.id ?? '') 
       },
       {
         onSuccess: () => {
+          toast.success("Team created successfully");
           onClose();
+          setFormData({ name: "", members: [] });
+          setStep(1);
         },
         onError: (error) => {
-          toast.error('Failed to create team');
-          console.error('Error creating team:', error);
+          toast.error("Failed to create team");
+          console.error("Error creating team:", error);
         }
       }
     );

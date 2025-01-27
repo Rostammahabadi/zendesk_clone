@@ -12,7 +12,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "sonner";
-import { useUpdateUser } from "../hooks/queries/useUsers";
 import { useAddTeamMember } from "../hooks/queries/useTeams";
 
 interface Team {
@@ -47,7 +46,6 @@ const STEPS = [
 export function OnboardingWalkthrough() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const updateUser = useUpdateUser();
   const addTeamMember = useAddTeamMember();
   const [step, setStep] = useState(1);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -196,7 +194,7 @@ export function OnboardingWalkthrough() {
           if (formData.teamId) {
             console.log("Adding user to team:", formData.teamId);
             await addTeamMember.mutateAsync({
-              teamId: formData.teamId,
+              teamId: formData.teamId?.toString(),
               userId: user.id,
             });
           }
@@ -207,6 +205,7 @@ export function OnboardingWalkthrough() {
               first_name: formData.firstName,
               last_name: formData.lastName,
               phone_number: formData.phoneNumber || null,
+              team_id: formData.teamId?.toString() || null,
             },
           });
 

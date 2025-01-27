@@ -13,17 +13,6 @@ interface ValidationErrors {
   password?: string[]
 }
 
-interface UserProfile {
-  id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  role: 'admin' | 'agent' | 'customer'
-  company_id: string | null
-  created_at: string
-  updated_at: string
-}
-
 interface LoginPageProps {
   userType?: 'customer' | 'agent' | 'admin'
 }
@@ -38,7 +27,6 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [_, setUserProfile] = useState<UserProfile | null>(null)
 
   // Check for error parameter in URL
   useEffect(() => {
@@ -83,7 +71,8 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
     const errors: ValidationErrors = {}
     
     if (email && validateEmail(email)) {
-      errors.email = validateEmail(email)
+      const emailError = validateEmail(email)
+      errors.email = emailError || undefined
     }
 
     if (password) {
@@ -120,7 +109,7 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
     try {
       if (isSignUp) {
         // Sign up flow
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -138,17 +127,15 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
         setIsSignUp(false)
       } else {
         // Sign in flow
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
 
         if (error) throw error
 
-        if (data?.user) {
-          // Redirect will be handled by AuthCallback component
-          navigate('/auth/callback')
-        }
+        // Redirect to auth callback
+        navigate('/auth/callback')
       }
     } catch (error) {
       const err = error as AuthError
@@ -161,7 +148,7 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
     try {
       setLoading(true)
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -169,15 +156,7 @@ export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
       })
 
       if (error) throw error
-
-      // We'll handle domain validation in the callback route since OAuth redirects
-      // Note: The actual validation will need to be implemented in the callback handler
-      // You can add a hidden input or URL parameter to pass the allowed domains
-      // const allowedDomains = ['assistly.com'] // Add your company domains here
-      // const redirectUrl = new URL(data.url || window.location.origin)
-      // redirectUrl.searchParams.append('allowed_domains', allowedDomains.join(','))
-      // window.location.href = redirectUrl.toString()
-      
+      // The OAuth flow will redirect the user, so we don't need to do anything else here
     } catch (error) {
       const err = error as AuthError
       toast.error(err.message)
