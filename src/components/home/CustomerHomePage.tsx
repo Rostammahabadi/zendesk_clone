@@ -10,6 +10,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useTicketStats } from "../../hooks/queries/useTicketStats";
 import { useState } from "react";
+import ChatBot from "../homepage/ChatBot";
 
 type TimeFrame = '1m' | '3m' | '6m';
 
@@ -219,6 +220,8 @@ export function CustomerHomePage() {
           </div>
         </div>
       </div>
+      {/* ChatBot */}
+      <ChatBot />
     </div>
   );
 }

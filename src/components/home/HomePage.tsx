@@ -1,6 +1,7 @@
-import { AdminHomePage } from "./AdminHomePage";
-import { CustomerHomePage } from "./CustomerHomePage";
-import { useAuth } from "../../hooks/useAuth";
+import { AdminHomePage } from "./AdminHomePage.tsx";
+import { CustomerHomePage } from "./CustomerHomePage.tsx";
+import { useAuth } from "../../hooks/useAuth.ts";
+import { AgentHomePage } from "./AgentHomePage.tsx";
 
 export function HomePage() {
   const { user } = useAuth();
@@ -18,7 +19,7 @@ export function HomePage() {
     case 'admin':
       return <AdminHomePage />;
     case 'agent':
-      return <CustomerHomePage />; // For now using CustomerHomePage for agents too
+      return <AgentHomePage />; // For now using CustomerHomePage for agents too
     case 'customer':
       return <CustomerHomePage />;
     default:

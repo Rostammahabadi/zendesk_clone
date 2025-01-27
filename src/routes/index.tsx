@@ -23,8 +23,8 @@ export const router = createBrowserRouter([
     element: <SupportFAQPage />,
   },
   {
-    path: '/customer/login',
-    element: <LoginPage userType="customer" />,
+    path: '/login',
+    element: <LoginPage />,
   },
   {
     path: '/agent/login',

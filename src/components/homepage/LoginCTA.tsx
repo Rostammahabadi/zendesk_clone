@@ -9,7 +9,7 @@ export default function LoginCTA({ onLogin }: LoginCTAProps) {
   const navigate = useNavigate();
 
   const handleLogin = () => {
-    navigate('/customer/login');
+    navigate('/login');
     onLogin();
   };
 

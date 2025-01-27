@@ -54,7 +54,7 @@ import {
     },
   ];
   
-  export function CustomerHomePage() {
+  export function AgentHomePage() {
     const { userData } = useAuth();
     const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('1m');
     const { data: stats, isLoading } = useTicketStats();
