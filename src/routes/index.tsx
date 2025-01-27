@@ -51,10 +51,6 @@ export const router = createBrowserRouter([
     element: <AuthCallback />,
   },
   {
-    path: '/auth/customer/callback',
-    element: <AuthCallback />,
-  },
-  {
     path: '/:role/dashboard',
     element: <ProtectedRoute />,
     children: [
