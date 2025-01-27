@@ -18,7 +18,7 @@ export function Header() {
     localStorage.clear();
     localStorage.theme = 'light';
     document.documentElement.classList.remove('dark');
-    navigate("/login");
+    navigate(`/${userData?.role}/login`);
   };
 
   return (

@@ -253,6 +253,20 @@
       "when": 1737736687350,
       "tag": "0035_strong_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1737929030034,
+      "tag": "0036_orange_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1737929103168,
+      "tag": "0037_blue_shard",
+      "breakpoints": true
     }
   ]
 }

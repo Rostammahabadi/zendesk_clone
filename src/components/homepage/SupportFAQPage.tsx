@@ -8,6 +8,7 @@ import LoginCTA from "./LoginCTA"
 import Dashboard from "./Dashboard"
 import FAQSection from "./FAQSection"
 import SearchBar from "./SearchBar"
+import ChatBot from "./ChatBot"
 
 export default function SupportFAQPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -20,6 +21,7 @@ export default function SupportFAQPage() {
           {!isLoggedIn ? <LoginCTA onLogin={() => setIsLoggedIn(true)} /> : <Dashboard />}
           <SearchBar />
           <FAQSection />
+          <ChatBot />
         </main>
         <Footer />
       </div>

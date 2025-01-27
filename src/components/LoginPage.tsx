@@ -24,14 +24,17 @@ interface UserProfile {
   updated_at: string
 }
 
-export const LoginPage = () => {
+interface LoginPageProps {
+  userType?: 'customer' | 'agent' | 'admin'
+}
+
+export const LoginPage = ({ userType = 'customer' }: LoginPageProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<ValidationErrors>({})
   const [isSignUp, setIsSignUp] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
@@ -42,14 +45,17 @@ export const LoginPage = () => {
     const params = new URLSearchParams(location.search)
     const errorParam = params.get('error')
     if (errorParam === 'invalid_domain') {
-      setError('Please sign in with your company email address. Personal email addresses are not allowed.')
+      setErrors(prev => ({ ...prev, email: 'Please sign in with your company email address. Personal email addresses are not allowed.' }))
     }
   }, [location])
 
   // Validation functions
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
+  const validateEmail = (email: string): string | null => {
+    if (!email) {
+      return 'Email is required'
+    }
+    
+    return getEmailError(email, userType)
   }
 
   const validatePassword = (password: string): string[] => {
@@ -76,8 +82,8 @@ export const LoginPage = () => {
   useEffect(() => {
     const errors: ValidationErrors = {}
     
-    if (email && !validateEmail(email)) {
-      errors.email = 'Please enter a valid email address'
+    if (email && validateEmail(email)) {
+      errors.email = validateEmail(email)
     }
 
     if (password) {
@@ -87,197 +93,78 @@ export const LoginPage = () => {
       }
     }
 
-    setValidationErrors(errors)
+    setErrors(errors)
   }, [email, password])
 
   const isFormValid = (): boolean => {
     return (
       email.length > 0 &&
       password.length > 0 &&
-      validateEmail(email) &&
+      !validateEmail(email) &&
       validatePassword(password).length === 0
     )
   }
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isFormValid()) return
+    setLoading(true)
+    setErrors({})
 
-    setError(null)
-    setSuccessMessage(null)
-    setIsLoading(true)
-
-    // Extra check for domain rules, if any
-    const emailError = getEmailError(email)
+    const emailError = validateEmail(email)
     if (emailError) {
-      setError(emailError)
-      setIsLoading(false)
+      setErrors(prev => ({ ...prev, email: emailError }))
+      setLoading(false)
       return
     }
 
     try {
       if (isSignUp) {
-        // ============ SIGNUP FLOW ============
-        const { error } = await supabase.auth.signUp({
+        // Sign up flow
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        })
-        if (error) throw error
-
-        setSuccessMessage('Check your email for the confirmation link!')
-      } else {
-        // ============ SIGNIN FLOW ============
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        if (!session) throw new Error('No session established')
-
-        // Double-check we have a user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) throw new Error('Authentication failed')
-        if (!user.email) throw new Error('No email found for user')
-
-        // 1) Extract domain
-        const emailDomain = user.email.split('@')[1].toLowerCase()
-
-        // 2) Check for existing company
-        const {
-          data: existingCompany,
-          error: companyError,
-        } = await supabase
-          .from('companies')
-          .select('id, name')
-          .eq('domain', emailDomain)
-          .single()
-
-        // code PGRST116 => "Row not found" in PostgREST
-        if (companyError && companyError.code !== 'PGRST116') {
-          throw companyError
-        }
-
-        // 3) Check if we already have a user record in `users` table
-        const {
-          data: existingUserProfile,
-          error: profileError,
-        } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          throw profileError
-        }
-
-        // 4) If a user row already exists, go straight to their dashboard
-        if (existingUserProfile) {
-          handleNavigateByRole(existingUserProfile.role)
-          return
-        }
-
-        // 5) If userProfile does NOT exist:
-        if (existingCompany) {
-          // 5a) We found a company => create user row in `users` with that company_id
-          const {
-            data: newProfile,
-            error: createProfileError,
-          } = await supabase
-            .from('users')
-            .insert({
-              id: user.id,
-              email: user.email,
-              company_id: existingCompany.id,
-              role: 'agent', // or any default role
-            })
-            .select()
-            .single()
-
-          if (createProfileError) throw createProfileError
-          await supabase.from('user_roles').insert({
-            user_id: newProfile.id,
-            role: 'agent',
-          })
-          // Update user metadata so Supabase Auth knows their role & company too
-          const { error: metadataError } = await supabase.auth.updateUser({
             data: {
-              role: 'agent',
-              company_id: existingCompany.id,
+              role: userType, // Pass the userType as metadata
+              signup_flow: true, // Flag to indicate this is a new signup
             },
-          })
-          if (metadataError) throw metadataError
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
+        })
+        
+        if (error) throw error
+        
+        toast.success('Please check your email to verify your account')
+        setIsSignUp(false)
+      } else {
+        // Sign in flow
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-          toast.success(`Automatically joined ${existingCompany.name} based on your email domain!`)
-          
-          setUserProfile(newProfile)
-          navigate('/onboarding')
-        } else {
-          // 5b) No matching company => user *must* create one.
-          // Because your schema requires company_id (NOT NULL) for any user,
-          // we cannot insert a user row yet. So we:
-          //  - Mark them as 'admin' in metadata (so they have permissions to create the company).
-          //  - Show the "signup walkthrough" for company creation.
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: { role: 'admin' },
-          })
-          if (updateError) throw updateError
-          
+        if (error) throw error
 
-          setUserProfile({
-            id: user.id,
-            email: user.email,
-            first_name: null,
-            last_name: null,
-            role: 'admin',
-            company_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          navigate('/signup')
+        if (data?.user) {
+          // Redirect will be handled by AuthCallback component
+          navigate('/auth/callback')
         }
       }
     } catch (error) {
-      setError((error as AuthError).message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleNavigateByRole = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        navigate('/admin/dashboard');
-        break;
-      case 'agent':
-        navigate('/agent/dashboard');
-        break;
-      case 'customer':
-        navigate('/customer/dashboard');
-        break;
-      default:
-        navigate('/customer/dashboard');
+      const err = error as AuthError
+      toast.error(err.message)
+      setLoading(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
     try {
-      setError(null)
-      setIsLoading(true)
-      
+      setLoading(true)
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
         }
       })
 
@@ -286,14 +173,15 @@ export const LoginPage = () => {
       // We'll handle domain validation in the callback route since OAuth redirects
       // Note: The actual validation will need to be implemented in the callback handler
       // You can add a hidden input or URL parameter to pass the allowed domains
-      const allowedDomains = ['assistly.com'] // Add your company domains here
-      const redirectUrl = new URL(data.url || window.location.origin)
-      redirectUrl.searchParams.append('allowed_domains', allowedDomains.join(','))
-      window.location.href = redirectUrl.toString()
+      // const allowedDomains = ['assistly.com'] // Add your company domains here
+      // const redirectUrl = new URL(data.url || window.location.origin)
+      // redirectUrl.searchParams.append('allowed_domains', allowedDomains.join(','))
+      // window.location.href = redirectUrl.toString()
       
     } catch (error) {
-      setError((error as AuthError).message)
-      setIsLoading(false)
+      const err = error as AuthError
+      toast.error(err.message)
+      setLoading(false)
     }
   }
 
@@ -329,9 +217,8 @@ export const LoginPage = () => {
               <button
                 onClick={() => {
                   setIsSignUp(!isSignUp)
-                  setError(null)
+                  setErrors({})
                   setSuccessMessage(null)
-                  setValidationErrors({})
                 }}
                 className="text-indigo-600 hover:text-indigo-500 font-medium"
               >
@@ -340,16 +227,16 @@ export const LoginPage = () => {
             </div>
           </div>
 
-          <form onSubmit={handleEmailSubmit} className="mt-8 space-y-6">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             {successMessage && (
               <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg">
                 {successMessage}
               </div>
             )}
 
-            {error && (
+            {errors.email && (
               <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                {error}
+                {errors.email}
               </div>
             )}
 
@@ -362,12 +249,9 @@ export const LoginPage = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
                   className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 ${
-                    validationErrors.email ? 'border-red-300' : 'border-gray-300'
+                    errors.email ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
-                {validationErrors.email && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-                )}
               </div>
 
               <div>
@@ -379,7 +263,7 @@ export const LoginPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
                     className={`w-full px-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 ${
-                      validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                      errors.password ? 'border-red-300' : 'border-gray-300'
                     }`}
                   />
                   <button
@@ -399,9 +283,9 @@ export const LoginPage = () => {
                     )}
                   </button>
                 </div>
-                {validationErrors.password && (
+                {errors.password && (
                   <div className="mt-1 text-sm text-red-600">
-                    {validationErrors.password.map((error, index) => (
+                    {errors.password.map((error, index) => (
                       <p key={index}>{error}</p>
                     ))}
                   </div>
@@ -412,10 +296,10 @@ export const LoginPage = () => {
             <button
               type="submit"
               data-testid="submit-button"
-              disabled={isLoading || !isFormValid()}
+              disabled={loading || !isFormValid()}
               className="w-full py-3 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? 'Please wait...' : (isSignUp ? 'Sign up' : 'Sign in')}
+              {loading ? 'Please wait...' : (isSignUp ? 'Sign up' : 'Sign in')}
             </button>
 
             <div className="relative">
@@ -432,7 +316,7 @@ export const LoginPage = () => {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={isLoading}
+              disabled={loading}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

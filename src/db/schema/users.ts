@@ -8,10 +8,10 @@ export const users = pgTable("users", {
 	firstName: text("first_name"),
 	lastName: text("last_name"),
 	role: varchar({ length: 50 }).notNull(),
-	companyId: uuid("company_id").notNull(),
+	companyId: uuid("company_id"),
 	title: text("title"),
-  avatarUrl: text("avatar_url"),
-  phoneNumber: text("phone_number"),
+  	avatarUrl: text("avatar_url"),
+  	phoneNumber: text("phone_number"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
@@ -31,4 +31,6 @@ export const users = pgTable("users", {
   pgPolicy("Enable read access for all users", { as: "permissive", for: "select", to: ["public"] }),
   pgPolicy("users_can_update_their_own_information", { as: "permissive", for: "update", to: ["authenticated"] }),
   pgPolicy("check_agent_role", { as: "permissive", for: "insert", to: ["authenticated"] }),
+  pgPolicy("admin_can_insert_into_users", { as: "permissive", for: "insert", to: ["public"] }),
+pgPolicy("enable_update_to_user", { as: "permissive", for: "update", to: ["public"] }),
 ]);

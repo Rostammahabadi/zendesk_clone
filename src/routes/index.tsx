@@ -23,6 +23,18 @@ export const router = createBrowserRouter([
     element: <SupportFAQPage />,
   },
   {
+    path: '/customer/login',
+    element: <LoginPage userType="customer" />,
+  },
+  {
+    path: '/agent/login',
+    element: <LoginPage userType="agent" />,
+  },
+  {
+    path: '/admin/login',
+    element: <LoginPage userType="admin" />,
+  },
+  {
     path: '/onboarding',
     element: <OnboardingWalkthrough />
   },
@@ -31,15 +43,15 @@ export const router = createBrowserRouter([
     element: <SignupWalkthrough />
   },
   {
-    path: '/customer/login',
-    element: <LoginPage />,
-  },
-  {
     path: '/login',
     element: <LoginPage />,
   },
   {
     path: '/auth/callback',
+    element: <AuthCallback />,
+  },
+  {
+    path: '/auth/customer/callback',
     element: <AuthCallback />,
   },
   {

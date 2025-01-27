@@ -36,10 +36,11 @@ const STEPS = [
   {
     title: "Join your team",
     subtitle: "Which team will you be working with?",
+    agentOnly: true, // Only show for agents
   },
   {
     title: "Almost there!",
-    subtitle: "How can your teammates reach you?",
+    subtitle: "Add your phone number for important notifications",
   },
 ];
 
@@ -57,42 +58,87 @@ export function OnboardingWalkthrough() {
     phoneNumber: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch teams when component mounts
+  // Get filtered steps based on user role
+  const filteredSteps = STEPS.filter((step) =>
+    !(step.agentOnly && user?.user_metadata?.role === "customer")
+  );
+
+  // Check if user already has profile data
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data: userProfile, error } = await supabase
+          .from("users")
+          .select("first_name, last_name")
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+
+        // If user already has a complete profile, redirect to dashboard
+        if (userProfile?.first_name && userProfile?.last_name) {
+          const role = user.user_metadata?.role || "customer";
+          navigate(`/${role}/dashboard`);
+          return;
+        }
+
+        // Pre-fill form if partial data exists
+        if (userProfile) {
+          setFormData((prev) => ({
+            ...prev,
+            firstName: userProfile.first_name || "",
+            lastName: userProfile.last_name || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error checking user profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserProfile();
+  }, [user, navigate]);
+
+  // Fetch teams when component mounts and only if user is an agent
   useEffect(() => {
     const fetchTeams = async () => {
+      if (user?.user_metadata?.role !== "agent") return;
+
       try {
         // First get the user's company_id
         const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('company_id')
-          .eq('id', user?.id)
+          .from("users")
+          .select("company_id")
+          .eq("id", user?.id)
           .single();
 
         if (userError) throw userError;
         if (!userData?.company_id) {
-          console.error('No company ID found for user');
+          console.error("No company ID found for user");
           return;
         }
 
         // Then fetch teams for that company
         const { data: teamsData, error: teamsError } = await supabase
-          .from('teams')
-          .select('*')
-          .eq('company_id', userData.company_id);
+          .from("teams")
+          .select("*")
+          .eq("company_id", userData.company_id);
 
         if (teamsError) throw teamsError;
         setTeams(teamsData || []);
       } catch (error) {
-        console.error('Error fetching teams:', error);
-        toast.error('Failed to load teams');
+        console.error("Error fetching teams:", error);
+        toast.error("Failed to load teams");
       }
     };
 
-    if (user?.id) {
-      fetchTeams();
-    }
-  }, [user?.id]);
+    fetchTeams();
+  }, [user]);
 
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
@@ -106,7 +152,7 @@ export function OnboardingWalkthrough() {
     }
     // Phone number validation is optional but if provided should be valid
     if (
-      step === 3 &&
+      step === filteredSteps.length &&
       formData.phoneNumber &&
       !/^\+?[\d\s-]{10,}$/.test(formData.phoneNumber)
     ) {
@@ -118,45 +164,93 @@ export function OnboardingWalkthrough() {
 
   const handleNext = async () => {
     if (validateStep()) {
-      if (step === STEPS.length) {
+      if (step === filteredSteps.length) {
         try {
-          // Update user with the collected information
-          await updateUser.mutateAsync({
-            userId: user?.id || '',
-            userData: {
+          if (!user?.id) {
+            throw new Error("No user session found");
+          }
+
+          console.log("Updating user profile for ID:", user.id);
+          console.log("Form data:", formData);
+
+          // Update user profile in the database
+          const { data: updateData, error: updateError } = await supabase
+            .from("users")
+            .update({
               first_name: formData.firstName,
               last_name: formData.lastName,
-              phone_number: formData.phoneNumber,
-            }
-          });
-          
+              phone_number: formData.phoneNumber || null,
+            })
+            .eq("id", user.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error("Error updating user profile:", updateError);
+            throw updateError;
+          }
+
+          console.log("Updated user profile:", updateData);
+
           // If a team was selected, add the user to the team
           if (formData.teamId) {
+            console.log("Adding user to team:", formData.teamId);
             await addTeamMember.mutateAsync({
-              teamId: formData.teamId.toString(),
-              userId: user?.id || ''
+              teamId: formData.teamId,
+              userId: user.id,
             });
           }
-          
-          // Fetch updated user data and store in localStorage
+
+          // Update user metadata in auth
+          const { data: authUpdate, error: authError } = await supabase.auth.updateUser({
+            data: {
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone_number: formData.phoneNumber || null,
+            },
+          });
+
+          if (authError) {
+            console.error("Error updating auth metadata:", authError);
+            throw authError;
+          }
+
+          console.log("Updated auth metadata:", authUpdate);
+
+          // Fetch the most up-to-date user data
           const { data: updatedUserData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user?.id)
+            .from("users")
+            .select("*")
+            .eq("id", user.id)
             .single();
-            
-          if (userError) throw userError;
-          
-          // Clear and update localStorage with new user data
-          localStorage.removeItem('userData');
-          localStorage.setItem('userData', JSON.stringify(updatedUserData));
-          
+
+          if (userError) {
+            console.error("Error fetching updated user data:", userError);
+            throw userError;
+          }
+
+          // Clear existing user data from localStorage
+          localStorage.removeItem("userData");
+
+          // Wait a moment for auth context to update
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          // Set the new user data in localStorage
+          localStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+          // Force a page reload to ensure all data is fresh
+          const role = user.user_metadata?.role || "customer";
+          const dashboardUrl = `/${role}/dashboard`;
+
           toast.success("Profile updated successfully!");
-          // Navigate to the appropriate dashboard based on role
-          navigate(`/${user?.user_metadata.role}/dashboard`);
+
+          // Use window.location for a full page reload
+          window.location.href = dashboardUrl;
         } catch (error) {
-          console.error('Error updating user:', error);
-          toast.error("Failed to update profile");
+          console.error("Error updating user:", error);
+          toast.error(
+            error instanceof Error ? error.message : "Failed to update profile"
+          );
         }
       } else {
         setStep(step + 1);
@@ -168,6 +262,14 @@ export function OnboardingWalkthrough() {
     setStep(step + 1);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
@@ -176,7 +278,7 @@ export function OnboardingWalkthrough() {
           <div
             className="h-1 bg-blue-500 transition-all duration-300"
             style={{
-              width: `${(step / STEPS.length) * 100}%`,
+              width: `${(step / filteredSteps.length) * 100}%`,
             }}
           />
         </div>
@@ -184,10 +286,10 @@ export function OnboardingWalkthrough() {
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              {STEPS[step - 1].title}
+              {filteredSteps[step - 1]?.title || "Complete!"}
             </h2>
             <p className="mt-1 text-gray-500 dark:text-gray-400">
-              {STEPS[step - 1].subtitle}
+              {filteredSteps[step - 1]?.subtitle || ""}
             </p>
           </div>
           {/* Content */}
@@ -282,7 +384,7 @@ export function OnboardingWalkthrough() {
                 )}
               </div>
             )}
-            {step === 3 && (
+            {step === filteredSteps.length && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Phone Number
@@ -337,7 +439,7 @@ export function OnboardingWalkthrough() {
                 onClick={handleNext}
                 className="flex items-center px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
-                {step === STEPS.length ? (
+                {step === filteredSteps.length ? (
                   <>
                     Complete
                     <CheckCircle className="w-5 h-5 ml-1" />

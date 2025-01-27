@@ -1,18 +1,35 @@
 import { relations } from "drizzle-orm/relations";
-import { users, ticketMessages, tickets, ticketEvents, companies, tags, teams, userTeams, userRoles, skills, userSkills, ticketTags, agentTicketStats } from "./schema";
+import { companies, skills, userSkills, users, ticketMessages, tickets, ticketEvents, tags, teams, userTeams, userRoles, ticketTags, agentTicketStats } from "./schema";
 
-export const ticketMessagesRelations = relations(ticketMessages, ({one}) => ({
-	user: one(users, {
-		fields: [ticketMessages.senderId],
-		references: [users.id]
+export const skillsRelations = relations(skills, ({one, many}) => ({
+	company: one(companies, {
+		fields: [skills.companyId],
+		references: [companies.id]
 	}),
-	ticket: one(tickets, {
-		fields: [ticketMessages.ticketId],
-		references: [tickets.id]
+	userSkills: many(userSkills),
+}));
+
+export const companiesRelations = relations(companies, ({many}) => ({
+	skills: many(skills),
+	tags: many(tags),
+	teams: many(teams),
+	tickets: many(tickets),
+	users: many(users),
+}));
+
+export const userSkillsRelations = relations(userSkills, ({one}) => ({
+	skill: one(skills, {
+		fields: [userSkills.skillId],
+		references: [skills.id]
+	}),
+	user: one(users, {
+		fields: [userSkills.userId],
+		references: [users.id]
 	}),
 }));
 
 export const usersRelations = relations(users, ({one, many}) => ({
+	userSkills: many(userSkills),
 	ticketMessages: many(ticketMessages),
 	ticketEvents: many(ticketEvents),
 	tickets_assignedTo: many(tickets, {
@@ -32,8 +49,18 @@ export const usersRelations = relations(users, ({one, many}) => ({
 		references: [companies.id]
 	}),
 	userRoles: many(userRoles),
-	userSkills: many(userSkills),
 	agentTicketStats: many(agentTicketStats),
+}));
+
+export const ticketMessagesRelations = relations(ticketMessages, ({one}) => ({
+	user: one(users, {
+		fields: [ticketMessages.senderId],
+		references: [users.id]
+	}),
+	ticket: one(tickets, {
+		fields: [ticketMessages.ticketId],
+		references: [tickets.id]
+	}),
 }));
 
 export const ticketsRelations = relations(tickets, ({one, many}) => ({
@@ -75,14 +102,6 @@ export const tagsRelations = relations(tags, ({one, many}) => ({
 	ticketTags: many(ticketTags),
 }));
 
-export const companiesRelations = relations(companies, ({many}) => ({
-	tags: many(tags),
-	teams: many(teams),
-	tickets: many(tickets),
-	users: many(users),
-	skills: many(skills),
-}));
-
 export const teamsRelations = relations(teams, ({one, many}) => ({
 	company: one(companies, {
 		fields: [teams.companyId],
@@ -112,25 +131,6 @@ export const userRolesRelations = relations(userRoles, ({one}) => ({
 	user: one(users, {
 		fields: [userRoles.userId],
 		references: [users.id]
-	}),
-}));
-
-export const userSkillsRelations = relations(userSkills, ({one}) => ({
-	skill: one(skills, {
-		fields: [userSkills.skillId],
-		references: [skills.id]
-	}),
-	user: one(users, {
-		fields: [userSkills.userId],
-		references: [users.id]
-	}),
-}));
-
-export const skillsRelations = relations(skills, ({one, many}) => ({
-	userSkills: many(userSkills),
-	company: one(companies, {
-		fields: [skills.companyId],
-		references: [companies.id]
 	}),
 }));
 

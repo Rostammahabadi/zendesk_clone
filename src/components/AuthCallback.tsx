@@ -40,47 +40,35 @@ export const AuthCallback = () => {
           throw new Error('Invalid email format')
         }
 
-        // Check if company exists with this domain
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('id, name')
-          .eq('domain', emailDomain)
-          .single() as { data: Company | null; error: any }
-
-        // Ignore PGRST116 (not found) error as it's expected for new domains
-        if (companyError && companyError.code !== 'PGRST116') {
-          throw companyError
-        }
-
-        // Check if user already has a profile
-        const { data: existingProfile, error: profileError } = await supabase
+        // First check if user already exists in our database
+        const { data: existingUser, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
-        if (profileError && profileError.code !== 'PGRST116') {
-          throw profileError
+        if (userError && userError.code !== 'PGRST116') {
+          throw userError
         }
 
-        // If user already has a profile, navigate to their dashboard
-        if (existingProfile) {
-          // Also update their metadata to ensure it's in sync
+        if (existingUser) {
+          // User exists - update metadata and redirect to appropriate dashboard
           await supabase.auth.updateUser({
             data: { 
-              role: existingProfile.role.toLowerCase(),
-              company_id: existingProfile.company_id
+              role: existingUser.role.toLowerCase(),
+              company_id: existingUser.company_id
             }
           })
 
           // Clear cached user data to force a fresh fetch
           localStorage.removeItem('userData')
 
-          if (existingProfile.role === 'agent') {
+          // Redirect to appropriate dashboard
+          if (existingUser.role === 'agent') {
             navigate('/agent/dashboard')
-          } else if (existingProfile.role === 'admin') {
+          } else if (existingUser.role === 'admin') {
             navigate('/admin/dashboard')
-          } else if (existingProfile.role === 'customer') {
+          } else if (existingUser.role === 'customer') {
             navigate('/customer/dashboard')
           } else {
             navigate('/dashboard')
@@ -88,9 +76,18 @@ export const AuthCallback = () => {
           return
         }
 
-        // For new users:
-        if (company) {
-          // Company exists - create user profile and show onboarding
+        // Handle new user creation based on domain
+        if (emailDomain === 'gauntletai.com') {
+          // Get company ID for gauntletai.com
+          const { data: company, error: companyError } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('name', 'GauntletAI')
+            .single()
+
+          if (companyError) throw companyError
+
+          // Create new gauntletai.com user as agent
           const { data: newProfile, error: createError } = await supabase
             .from('users')
             .insert({
@@ -104,7 +101,7 @@ export const AuthCallback = () => {
 
           if (createError) throw createError
 
-          // Update user metadata right after creating profile
+          // Update user metadata
           await supabase.auth.updateUser({
             data: { 
               role: 'agent',
@@ -112,20 +109,46 @@ export const AuthCallback = () => {
             }
           })
 
+          // Add user role
           await supabase.from('user_roles').insert({
             user_id: newProfile.id,
             role: 'agent',
           })
 
-          // Clear cached user data to force a fresh fetch
-          localStorage.removeItem('userData')
+          setUserProfile(newProfile)
+        } else {
+          // Create new non-gauntletai.com user as customer
+          const { data: newProfile, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: session.user.id,
+              email: session.user.email,
+              role: 'customer'
+            })
+            .select()
+            .single()
+
+          if (createError) throw createError
+
+          // Update user metadata
+          await supabase.auth.updateUser({
+            data: { 
+              role: 'customer'
+            }
+          })
+
+          // Add user role
+          await supabase.from('user_roles').insert({
+            user_id: newProfile.id,
+            role: 'customer',
+          })
 
           setUserProfile(newProfile)
-          navigate('/onboarding')
-        } else {
-          // No company exists - redirect to signup walkthrough
-          navigate('/signup')
         }
+
+        // All new users go to onboarding
+        navigate('/onboarding')
+
       } catch (error) {
         console.error('Auth callback error:', error)
         Sentry.captureException(error, {

@@ -1,9 +1,43 @@
-import { pgTable, index, foreignKey, uuid, varchar, text, timestamp, pgPolicy, serial, boolean, unique, bigint, integer, uniqueIndex, primaryKey, date, pgView, json, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, uniqueIndex, foreignKey, uuid, varchar, timestamp, index, text, pgPolicy, serial, boolean, unique, bigint, primaryKey, date, integer, pgView, json, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const appPermission = pgEnum("app_permission", ['companies.insert', 'companies.select', 'companies.update', 'companies.delete', 'users.insert', 'users.select', 'users.update', 'users.delete', 'teams.insert', 'teams.select', 'teams.update', 'teams.delete', 'user_teams.insert', 'user_teams.select', 'user_teams.update', 'user_teams.delete', 'tags.insert', 'tags.select', 'tags.update', 'tags.delete', 'tickets.insert', 'tickets.select', 'tickets.update', 'tickets.delete', 'ticket_messages.insert', 'ticket_messages.select', 'ticket_messages.update', 'ticket_messages.delete', 'ticket_events.insert', 'ticket_events.select', 'ticket_events.update', 'ticket_events.delete', 'ticket_tags.insert', 'ticket_tags.select', 'ticket_tags.update', 'ticket_tags.delete', 'user_roles.insert', 'user_roles.select', 'user_roles.update', 'user_roles.delete', 'skills.insert', 'skills.select', 'skills.update', 'skills.delete', 'user_skills.insert', 'user_skills.select', 'user_skills.update', 'user_skills.delete'])
 export const appRole = pgEnum("app_role", ['admin', 'agent', 'customer'])
 
+
+export const skills = pgTable("skills", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	companyId: uuid("company_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.companyId],
+			foreignColumns: [companies.id],
+			name: "skills_company_id_companies_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const userSkills = pgTable("user_skills", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	skillId: uuid("skill_id").notNull(),
+	proficiency: varchar({ length: 50 }),
+	addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.skillId],
+			foreignColumns: [skills.id],
+			name: "user_skills_skill_id_skills_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_skills_user_id_users_id_fk"
+		}).onDelete("cascade"),
+]);
 
 export const ticketMessages = pgTable("ticket_messages", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
@@ -186,6 +220,8 @@ export const users = pgTable("users", {
 	pgPolicy("Enable read access for all users", { as: "permissive", for: "select", to: ["public"] }),
 	pgPolicy("users_can_update_their_own_information", { as: "permissive", for: "update", to: ["authenticated"] }),
 	pgPolicy("check_agent_role", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("admin_can_insert_into_users", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("enable_update_to_user", { as: "permissive", for: "update", to: ["public"] }),
 ]);
 
 export const faqs = pgTable("faqs", {
@@ -223,40 +259,6 @@ export const rolePermissions = pgTable("role_permissions", {
 	permission: appPermission().notNull(),
 }, (table) => [
 	unique("role_permissions_role_permission_key").on(table.role, table.permission),
-]);
-
-export const userSkills = pgTable("user_skills", {
-	id: serial().primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	skillId: integer("skill_id").notNull(),
-	proficiency: varchar({ length: 50 }),
-	addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.skillId],
-			foreignColumns: [skills.id],
-			name: "user_skills_skill_id_skills_id_fk"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_skills_user_id_users_id_fk"
-		}).onDelete("cascade"),
-]);
-
-export const skills = pgTable("skills", {
-	id: serial().primaryKey().notNull(),
-	companyId: uuid("company_id").notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	uniqueIndex("skills_name_unique").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.companyId],
-			foreignColumns: [companies.id],
-			name: "skills_company_id_companies_id_fk"
-		}).onDelete("cascade"),
 ]);
 
 export const ticketTags = pgTable("ticket_tags", {
