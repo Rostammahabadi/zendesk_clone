@@ -102,9 +102,21 @@ async function queryMedicare(question: string) {
   }
 }
 
+const STORAGE_KEY = 'chatbot_messages';
+
+const clearChatHistory = () => {
+  localStorage.removeItem(STORAGE_KEY);
+};
+
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -112,15 +124,54 @@ export default function ChatBot() {
   const defaultMessage = 'Hello, how can I help you today?';
   const { isListening, startListening, stopListening } = useSpeechToText();
   
+  // Save messages to localStorage whenever they change
   useEffect(() => {
-    if (isOpen) {
+    if (messages.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
       setMessages([{ 
         text: defaultMessage, 
         isUser: false, 
         timestamp: Date.now() 
       }]);
     }
+  }, [isOpen, messages.length]);
+
+  // Add smooth scrolling when chat is opened
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure DOM is updated
+      setTimeout(scrollToBottom, 100);
+    }
   }, [isOpen]);
+
+  // Add event listener for window unload
+  useEffect(() => {
+    const handleUnload = () => {
+      clearChatHistory();
+    };
+
+    window.addEventListener('unload', handleUnload);
+    return () => {
+      window.removeEventListener('unload', handleUnload);
+    };
+  }, []);
+
+  // Listen for user logout
+  useEffect(() => {
+    const handleLogout = () => {
+      clearChatHistory();
+    };
+
+    window.addEventListener('logout', handleLogout);
+    return () => {
+      window.removeEventListener('logout', handleLogout);
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -185,7 +236,7 @@ export default function ChatBot() {
             className={`mb-4 bg-white rounded-lg shadow-lg overflow-hidden ${
               isFullscreen 
                 ? 'fixed inset-0 z-50 mb-0' 
-                : 'w-80'
+                : 'w-[400px]'
             }`}
             style={{ 
               position: isFullscreen ? 'fixed' : 'absolute',

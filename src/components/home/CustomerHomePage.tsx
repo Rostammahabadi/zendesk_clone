@@ -220,8 +220,6 @@ export function CustomerHomePage() {
           </div>
         </div>
       </div>
-      {/* ChatBot */}
-      <ChatBot />
     </div>
   );
 }
