@@ -16,15 +16,19 @@ const chatModel = new ChatOpenAI({
   openAIApiKey: Deno.env.get("OPENAI_API_KEY") || "",
 });
 
-const pinecone = new Pinecone({
+const lcdPinecone = new Pinecone({
   apiKey: Deno.env.get("PINECONE_API_KEY") || "",
+});
+
+const articlesPinecone = new Pinecone({
+  apiKey: Deno.env.get("ARTICLES_PINECONE_API_KEY") || "",
 });
 
 const lcdIndexName = "medicare-paragraphs";
 const articlesIndexName = "article-index";
 
-const lcdIndex = pinecone.index(lcdIndexName, "https://medicare-paragraphs-yhnte97.svc.aped-4627-b74a.pinecone.io");
-const articlesIndex = pinecone.index(articlesIndexName, "https://article-index-yhnte97.svc.aped-4627-b74a.pinecone.io");
+const lcdIndex = lcdPinecone.index(lcdIndexName, "https://medicare-info-frhvzj2.svc.aped-4627-b74a.pinecone.io");
+const articlesIndex = articlesPinecone.index(articlesIndexName, "https://article-index-yhnte97.svc.aped-4627-b74a.pinecone.io");
 
 async function embedText(text: string): Promise<number[]> {
   return await embeddings.embedQuery(text);
@@ -41,38 +45,39 @@ async function queryLcdIndex(question: string) {
   return response;
 }
 
-async function queryArticleIndexById(articleIds: string[]) {
-  if (articleIds.length === 0) return [];
+// async function queryArticleIndexById(articleIds: string[]) {
+//   if (articleIds.length === 0) return [];
 
-  const dummyVector = new Array(1536).fill(0);
-  const filter = { article_id: { $in: articleIds } };
+//   const dummyVector = new Array(1536).fill(0);
+//   const filter = { article_id: { $in: articleIds } };
 
-  const resp = await articlesIndex.query({
-    vector: dummyVector,
-    topK: 50,
-    includeMetadata: true,
-    filter,
-  });
-  return resp.matches || [];
-}
+//   const resp = await articlesIndex.query({
+//     vector: dummyVector,
+//     topK: 50,
+//     includeMetadata: true,
+//     filter,
+//   });
+//   return resp.matches || [];
+// }
 
-function buildContext(lcdChunks: string[], articleChunks: any[]) {
+// function buildContext(lcdChunks: string[], articleChunks: any[]) {
+function buildContext(lcdChunks: string[]) {
   let lcdContextStr = "";
   lcdChunks.forEach((chunkText, i) => {
     lcdContextStr += `LCD CHUNK ${i + 1}:\n${chunkText}\n\n`;
   });
 
-  let articleContextStr = "";
-  articleChunks.forEach((amatch, j) => {
-    const atext = (amatch.metadata?.chunk_text as string) || "";
-    articleContextStr += `ARTICLE CHUNK ${j + 1}:\n${atext}\n\n`;
-  });
+  // let articleContextStr = "";
+  // articleChunks.forEach((amatch, j) => {
+  //   const atext = (amatch.metadata?.chunk_text as string) || "";
+  //   articleContextStr += `ARTICLE CHUNK ${j + 1}:\n${atext}\n\n`;
+  // });
 
-  if (articleContextStr) {
-    return `${lcdContextStr}\nARTICLE CONTEXT:\n${articleContextStr}`;
-  } else {
+  // if (articleContextStr) {
+  //   return `${lcdContextStr}\nARTICLE CONTEXT:\n${articleContextStr}`;
+  // } else {
     return lcdContextStr;
-  }
+  // }
 }
 
 const systemTemplate = `
@@ -148,21 +153,21 @@ serve(async (req) => {
       const chunkText = (match.metadata?.chunk_text as string) || "";
       lcdChunks.push(chunkText);
 
-      const relatedDocs = match.metadata?.related_documents || [];
-      if (Array.isArray(relatedDocs)) {
-        relatedDocs.forEach((docref) => {
-          if (docref.startsWith("Article ")) {
-            const artId = docref.replace("Article ", "").trim();
-            articleIds.push(artId);
-          }
-        });
-      }
+      // const relatedDocs = match.metadata?.related_documents || [];
+      // if (Array.isArray(relatedDocs)) {
+      //   relatedDocs.forEach((docref) => {
+      //     if (docref.startsWith("Article ")) {
+      //       const artId = docref.replace("Article ", "").trim();
+      //       articleIds.push(artId);
+      //     }
+      //   });
+      // }
     });
 
-    const uniqueArticleIds = [...new Set(articleIds)];
-    const articleMatches = await queryArticleIndexById(uniqueArticleIds);
-
-    const contextStr = buildContext(lcdChunks, articleMatches);
+    // const uniqueArticleIds = [...new Set(articleIds)];
+    // const articleMatches = await queryArticleIndexById(uniqueArticleIds);
+    // const contextStr = buildContext(lcdChunks, articleMatches);
+    const contextStr = buildContext(lcdChunks);
     const finalAnswer = await askOpenai(question, contextStr);
 
     return new Response(
