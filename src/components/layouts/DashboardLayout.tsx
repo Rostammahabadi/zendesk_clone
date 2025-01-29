@@ -2,12 +2,10 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Header } from '../Header';
 import { Sidebar } from '../Sidebar';
-import { useAuth } from '../../hooks/useAuth';
 
 export const DashboardLayout = () => {
   const [currentView, setCurrentView] = useState('home');
   const location = useLocation();
-  const { userData } = useAuth();
 
   // Keep currentView in sync with URL
   useEffect(() => {

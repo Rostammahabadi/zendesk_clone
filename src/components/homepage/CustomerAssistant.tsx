@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, User, Send, Sparkles, X } from 'lucide-react';
+import { Bot, User, Send, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 
 interface Message {
   text: string;
@@ -23,7 +22,6 @@ interface CustomerAssistantProps {
 
 export function CustomerAssistant({ isOpen, onClose }: CustomerAssistantProps) {
   const { userData } = useAuth();
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY);
