@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Clock,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -14,10 +15,12 @@ import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
 import { RichTextEditor } from "../ui/RichTextEditor";
-import { convertFromRaw } from 'draft-js';
+import { convertFromRaw, convertToRaw } from 'draft-js';
 import { useTicket, useUpdateTicket, useAddTicketMessage, useUpdateTicketTags } from "../../hooks/queries/useTickets";
 import { useAgents } from '../../hooks/queries/useAgents';
 import { supabase } from "../../lib/supabaseClient";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { ChatOpenAI } from "@langchain/openai";
 
 const statusOptions = ['open', 'pending', 'closed'];
 const priorityOptions = ['low', 'medium', 'high'];
@@ -35,6 +38,9 @@ export function TicketDetail() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAgent = role === 'agent' || role === 'admin';
   const { data: agents } = useAgents();
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
 
   const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const { mutate: updateTicket } = useUpdateTicket();
@@ -207,6 +213,84 @@ export function TicketDetail() {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  const handleRewriteMessage = async () => {
+    if (!message.trim()) return;
+
+    setIsRewriting(true);
+    try {
+      const prompt = ChatPromptTemplate.fromTemplate(`
+        You are a professional customer service expert. Your task is to rewrite the following message to be more professional, clear, and courteous while maintaining its original meaning.
+
+        Guidelines:
+        - Maintain a professional and polite tone
+        - Keep the core message and all important details
+        - Use clear and concise language
+        - Ensure the message is well-structured
+        - Do not use any placeholders like [Name] or [Title]
+        - Do not add any greetings or signatures
+        - Provide only the actual message content
+
+        Original message: {message}
+
+        Rewrite the message directly, without any additional formatting or placeholders.
+      `);
+
+      const model = new ChatOpenAI({
+        modelName: "gpt-4-turbo-preview",
+        temperature: 0.7,
+        openAIApiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      });
+
+      const chain = prompt.pipe(model);
+      const response = await chain.invoke({
+        message: getPlainTextFromDraftJS(message),
+      });
+
+      if (response?.content) {
+        const cleanedMessage = response.content.toString().trim();
+        const contentState = convertFromRaw({
+          blocks: [
+            {
+              text: cleanedMessage,
+              type: 'unstyled',
+              depth: 0,
+              inlineStyleRanges: [],
+              entityRanges: [],
+              key: '1',
+            },
+          ],
+          entityMap: {},
+        });
+        setPreviewMessage(JSON.stringify(convertToRaw(contentState)));
+        toast.success('Preview ready');
+      } else {
+        toast.error('Failed to generate rewritten message');
+      }
+    } catch (error) {
+      console.error('Error rewriting message:', error);
+      toast.error('Failed to rewrite message');
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  const handleAcceptRewrite = () => {
+    if (previewMessage) {
+      setForceUpdate(true);
+      setMessage(previewMessage);
+      setTimeout(() => {
+        setForceUpdate(false);
+      }, 100);
+      setPreviewMessage(null);
+      toast.success('Rewrite applied');
+    }
+  };
+
+  const handleRejectRewrite = () => {
+    setPreviewMessage(null);
+    toast.info('Rewrite cancelled');
   };
 
   if (isLoading) {
@@ -403,8 +487,70 @@ export function TicketDetail() {
                 placeholder="Type your message here..."
                 className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
                 clearContent={clearMessage}
+                forceUpdate={forceUpdate}
               />
-              <div className="mt-2 flex justify-end">
+              {previewMessage && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl m-4">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                        <Sparkles className="w-5 h-5 mr-2 text-purple-500" />
+                        AI Suggestion
+                      </h3>
+                      <button
+                        onClick={handleRejectRewrite}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Message:</div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-gray-700 dark:text-gray-300">
+                          {getPlainTextFromDraftJS(message)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rewritten Message:</div>
+                        <RichTextEditor
+                          initialContent={previewMessage}
+                          onChange={() => {}}
+                          className="bg-purple-50 dark:bg-purple-900/20 rounded-lg"
+                          readOnly
+                        />
+                      </div>
+                    </div>
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
+                      <button
+                        onClick={handleRejectRewrite}
+                        className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAcceptRewrite}
+                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+                      >
+                        Apply Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="mt-2 flex justify-end space-x-2">
+                <button
+                  onClick={handleRewriteMessage}
+                  disabled={!message.trim() || isRewriting}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isRewriting ? (
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2" />
+                  )}
+                  {isRewriting ? 'Rewriting...' : 'Rewrite with AI'}
+                </button>
                 <button
                   onClick={handleSubmitComment}
                   disabled={!message.trim()}

@@ -11,6 +11,7 @@ interface RichTextEditorProps {
   readOnly?: boolean;
   onKeyPress?: (e: React.KeyboardEvent) => void;
   clearContent?: boolean;
+  forceUpdate?: boolean;
 }
 
 export function RichTextEditor({
@@ -20,7 +21,8 @@ export function RichTextEditor({
   className = '',
   readOnly = false,
   onKeyPress,
-  clearContent = false
+  clearContent = false,
+  forceUpdate = false
 }: RichTextEditorProps) {
   const editorRef = useRef<Editor>(null);
   const [editorState, setEditorState] = useState(() => {
@@ -34,6 +36,50 @@ export function RichTextEditor({
     }
     return EditorState.createEmpty();
   });
+
+  useEffect(() => {
+    if (forceUpdate && initialContent) {
+      try {
+        const content = typeof initialContent === 'object' 
+          ? initialContent 
+          : JSON.parse(initialContent);
+        
+        if (typeof content === 'string') {
+          const contentState = convertFromRaw({
+            blocks: [
+              {
+                text: content,
+                type: 'unstyled',
+                depth: 0,
+                inlineStyleRanges: [],
+                entityRanges: [],
+                key: '1',
+              },
+            ],
+            entityMap: {},
+          });
+          setEditorState(EditorState.createWithContent(contentState));
+        } else {
+          setEditorState(EditorState.createWithContent(convertFromRaw(content)));
+        }
+      } catch {
+        const contentState = convertFromRaw({
+          blocks: [
+            {
+              text: initialContent,
+              type: 'unstyled',
+              depth: 0,
+              inlineStyleRanges: [],
+              entityRanges: [],
+              key: '1',
+            },
+          ],
+          entityMap: {},
+        });
+        setEditorState(EditorState.createWithContent(contentState));
+      }
+    }
+  }, [initialContent, forceUpdate]);
 
   useEffect(() => {
     if (clearContent) {
