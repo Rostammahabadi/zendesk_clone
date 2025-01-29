@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, User, Send, Sparkles } from 'lucide-react';
-
+import { useAuth } from '../../hooks/useAuth';
 interface Message {
   text: string;
   isUser: boolean;
@@ -15,6 +15,7 @@ const clearChatHistory = () => {
 };
 
 export function CustomerAssistant() {
+  const { userData } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== 'undefined') {
@@ -119,7 +120,9 @@ export function CustomerAssistant() {
         },
         body: JSON.stringify({ 
           messages: [question],
-          thread_id: Date.now().toString() 
+          thread_id: Date.now().toString(),
+          current_user: userData?.id,
+          company_id: userData?.company_id
         })
       });
       
