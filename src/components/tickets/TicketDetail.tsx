@@ -240,7 +240,7 @@ export function TicketDetail() {
       const model = new ChatOpenAI({
         modelName: "gpt-4-turbo-preview",
         temperature: 0.7,
-        openAIApiKey: import.meta.env.VITE_OPENAI_API_KEY,
+        openAIApiKey: import.meta.env.VITE_OPENAI_API_KEY
       });
 
       const chain = prompt.pipe(model);
