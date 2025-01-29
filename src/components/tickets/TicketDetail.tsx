@@ -488,6 +488,8 @@ export function TicketDetail() {
                 className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
                 clearContent={clearMessage}
                 forceUpdate={forceUpdate}
+                onRewrite={handleRewriteMessage}
+                isRewriting={isRewriting}
               />
               {previewMessage && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -539,18 +541,6 @@ export function TicketDetail() {
                 </div>
               )}
               <div className="mt-2 flex justify-end space-x-2">
-                <button
-                  onClick={handleRewriteMessage}
-                  disabled={!message.trim() || isRewriting}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {isRewriting ? (
-                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4 mr-2" />
-                  )}
-                  {isRewriting ? 'Rewriting...' : 'Rewrite with AI'}
-                </button>
                 <button
                   onClick={handleSubmitComment}
                   disabled={!message.trim()}

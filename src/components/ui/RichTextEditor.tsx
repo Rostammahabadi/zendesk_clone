@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Editor, EditorState, RichUtils, convertToRaw, convertFromRaw, DraftHandleValue } from 'draft-js';
 import 'draft-js/dist/Draft.css';
-import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Sparkles } from 'lucide-react';
 
 interface RichTextEditorProps {
   initialContent: string;
@@ -12,6 +12,8 @@ interface RichTextEditorProps {
   onKeyPress?: (e: React.KeyboardEvent) => void;
   clearContent?: boolean;
   forceUpdate?: boolean;
+  onRewrite?: () => void;
+  isRewriting?: boolean;
 }
 
 export function RichTextEditor({
@@ -22,7 +24,9 @@ export function RichTextEditor({
   readOnly = false,
   onKeyPress,
   clearContent = false,
-  forceUpdate = false
+  forceUpdate = false,
+  onRewrite,
+  isRewriting
 }: RichTextEditorProps) {
   const editorRef = useRef<Editor>(null);
   const [editorState, setEditorState] = useState(() => {
@@ -126,6 +130,32 @@ export function RichTextEditor({
     focusEditor();
   };
 
+  const handleBoldClick = () => {
+    handleEditorChange(RichUtils.toggleInlineStyle(editorState, 'BOLD'));
+    focusEditor();
+  };
+
+  const handleItalicClick = () => {
+    handleEditorChange(RichUtils.toggleInlineStyle(editorState, 'ITALIC'));
+    focusEditor();
+  };
+
+  const handleUnorderedListClick = () => {
+    handleEditorChange(RichUtils.toggleBlockType(editorState, 'unordered-list-item'));
+    focusEditor();
+  };
+
+  const handleOrderedListClick = () => {
+    handleEditorChange(RichUtils.toggleBlockType(editorState, 'ordered-list-item'));
+    focusEditor();
+  };
+
+  const handleRewrite = () => {
+    if (onRewrite) {
+      onRewrite();
+    }
+  };
+
   const ToolbarButton = ({ onToggle, style, icon, label }: { onToggle: (e: React.MouseEvent) => void, style: string, icon: React.ReactNode, label: string }) => (
     <button
       type="button"
@@ -146,13 +176,13 @@ export function RichTextEditor({
       {!readOnly && (
         <div className="flex items-center gap-1 p-2 border-b dark:border-gray-600" role="toolbar" aria-label="Text formatting options">
           <ToolbarButton
-            onToggle={(e) => toggleInlineStyle(e, 'BOLD')}
+            onToggle={handleBoldClick}
             style="BOLD"
             icon={<Bold className="h-4 w-4" />}
             label="Bold"
           />
           <ToolbarButton
-            onToggle={(e) => toggleInlineStyle(e, 'ITALIC')}
+            onToggle={handleItalicClick}
             style="ITALIC"
             icon={<Italic className="h-4 w-4" />}
             label="Italic"
@@ -165,17 +195,34 @@ export function RichTextEditor({
           />
           <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" role="separator" />
           <ToolbarButton
-            onToggle={(e) => toggleBlockType(e, 'unordered-list-item')}
+            onToggle={handleUnorderedListClick}
             style="unordered-list-item"
             icon={<List className="h-4 w-4" />}
             label="Bullet List"
           />
           <ToolbarButton
-            onToggle={(e) => toggleBlockType(e, 'ordered-list-item')}
+            onToggle={handleOrderedListClick}
             style="ordered-list-item"
             icon={<ListOrdered className="h-4 w-4" />}
             label="Numbered List"
           />
+          {onRewrite && (
+            <button
+              onClick={handleRewrite}
+              disabled={!editorState.getCurrentContent().hasText() || isRewriting}
+              className="p-2 rounded hover:bg-purple-100 dark:hover:bg-purple-900/20 text-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center relative group"
+              aria-label="Remake with AI"
+            >
+              {isRewriting ? (
+                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mt-1 px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Remake with AI
+              </div>
+            </button>
+          )}
         </div>
       )}
       <div 
