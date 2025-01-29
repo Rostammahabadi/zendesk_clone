@@ -2,16 +2,21 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Header } from '../Header';
 import { Sidebar } from '../Sidebar';
+import { useAuth } from '../../hooks/useAuth';
+import { CustomerAssistant } from '../homepage/CustomerAssistant';
 
 export const DashboardLayout = () => {
   const [currentView, setCurrentView] = useState('home');
   const location = useLocation();
+  const { userData } = useAuth();
 
   // Keep currentView in sync with URL
   useEffect(() => {
     const path = location.pathname.substring(1) || 'home';
     setCurrentView(path);
   }, [location]);
+
+  const isCustomer = userData?.role === 'customer';
 
   return (
     <div className="flex w-full h-screen bg-gray-50 dark:bg-gray-900">
@@ -25,6 +30,7 @@ export const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      {isCustomer && <CustomerAssistant />}
     </div>
   );
 }; 

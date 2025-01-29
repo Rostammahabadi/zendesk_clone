@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabaseClient';
 import { Ticket, formatUser, formatTicketEvent, formatTicketMessage } from '../../types/ticket';
 import { useAuth } from '../useAuth';
+import { toast } from 'sonner';
 
 export const useTickets = () => {
   const { userData } = useAuth();
@@ -119,7 +120,12 @@ export const useTicket = (ticketId: string) => {
             company_id
           ),
           ticket_tags (
-            tag_id
+            tag_id,
+            tag:tags (
+              id,
+              name,
+              color
+            )
           )
         `)
         .eq('id', ticketId)
@@ -177,7 +183,6 @@ export const useTicket = (ticketId: string) => {
         companyId: ticketData.company_id,
         created_by: formatUser(ticketData.created_by),
         assigned_to: ticketData.assigned_to ? formatUser(ticketData.assigned_to) : null,
-        tags: ticketData.ticket_tags.map(tag => ({ id: tag.tag_id, name: '', tag_id: tag.tag_id })),
         events: eventsData.map(formatTicketEvent),
         messages: messagesData.map(formatTicketMessage)
       } as Ticket;
@@ -269,5 +274,95 @@ export const useAddTicketMessage = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tickets', data.ticketId] });
     },
+  });
+};
+
+export const useUpdateTicketTags = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      ticketId, 
+      companyId,
+      tags 
+    }: { 
+      ticketId: string;
+      companyId: string;
+      tags: { tag_id: string }[];
+    }) => {
+      try {
+        // First, remove all existing ticket_tags for this ticket
+        const { error: deleteError } = await supabase
+          .from('ticket_tags')
+          .delete()
+          .eq('ticket_id', ticketId);
+
+        if (deleteError) throw deleteError;
+
+        // For each tag, check if it exists or needs to be created
+        const tagPromises = tags.map(async (tagData) => {
+          // First check if a tag with this name already exists for this company
+          if (!tagData.tag_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
+            const { data: existingTag } = await supabase
+              .from('tags')
+              .select()
+              .eq('name', tagData.tag_id)
+              .eq('company_id', companyId)
+              .single();
+
+            if (existingTag) {
+              return existingTag.id;
+            }
+          }
+
+          // If it's a UUID, it's an existing tag
+          if (tagData.tag_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
+            return tagData.tag_id;
+          }
+
+          // If it's not a UUID and doesn't exist, create a new tag
+          const { data: newTag, error: createError } = await supabase
+            .from('tags')
+            .insert({
+              name: tagData.tag_id,
+              color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'), // Random color
+              company_id: companyId
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          return newTag.id;
+        });
+
+        const resolvedTagIds = await Promise.all(tagPromises);
+
+        // Create new ticket_tags associations
+        const { error: insertError } = await supabase
+          .from('ticket_tags')
+          .insert(
+            resolvedTagIds.map(tagId => ({
+              ticket_id: ticketId,
+              tag_id: tagId
+            }))
+          );
+
+        if (insertError) throw insertError;
+
+        return { ticketId };
+      } catch (error) {
+        console.error('Error handling tags:', error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', data.ticketId] });
+      toast.success('Tags updated successfully');
+    },
+    onError: (error) => {
+      console.error('Error updating tags:', error);
+      toast.error('Failed to update tags');
+    }
   });
 }; 

@@ -99,7 +99,10 @@ export const ticketService = {
       companyId: ticketData.company_id,
       created_by: formatUser(ticketData.created_by),
       assigned_to: ticketData.assigned_to ? formatUser(ticketData.assigned_to) : null,
-      tags: ticketData.ticket_tags.map(tag => ({ id: tag.tag_id, name: '', tag_id: tag.tag_id })),
+      ticket_tags: ticketData.ticket_tags.map(tag => ({ 
+        tag_id: tag.tag_id,
+        tag: { id: tag.tag_id, name: '', color: '#000000' }
+      })),
       comments: [],
       events: []
     } as Ticket;

@@ -15,7 +15,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { TagInput } from "../ui/TagInput";
 import { RichTextEditor } from "../ui/RichTextEditor";
 import { convertFromRaw } from 'draft-js';
-import { useTicket, useUpdateTicket, useAddTicketMessage } from "../../hooks/queries/useTickets";
+import { useTicket, useUpdateTicket, useAddTicketMessage, useUpdateTicketTags } from "../../hooks/queries/useTickets";
 import { useAgents } from '../../hooks/queries/useAgents';
 import { supabase } from "../../lib/supabaseClient";
 
@@ -38,6 +38,7 @@ export function TicketDetail() {
 
   const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const { mutate: updateTicket } = useUpdateTicket();
+  const { mutate: updateTags } = useUpdateTicketTags();
   const { mutate: addMessage } = useAddTicketMessage();
 
   const scrollToBottom = () => {
@@ -98,6 +99,16 @@ export function TicketDetail() {
   const handleFieldUpdate = async (field: UpdatableTicketField, value: any) => {
     if (!ticket || !isAgent) return;
 
+    if (field === 'tags') {
+      updateTags({ 
+        ticketId: ticket.id, 
+        companyId: ticket.companyId, 
+        tags: value 
+      });
+      return;
+    }
+    
+    // Handle other fields normally
     updateTicket({ ticketId: ticket.id, field, value }, {
       onSuccess: () => {
         toast.success(`Updated ${field} successfully`);
@@ -270,8 +281,11 @@ export function TicketDetail() {
                 <span className="text-sm text-gray-600 dark:text-gray-400">Tags:</span>
                 {isAgent ? (
                   <TagInput
-                    tags={ticket.tags?.map(tag => tag.id) || []}
-                    onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag })))}
+                    tags={ticket.ticket_tags?.map(tag => ({ 
+                      id: tag.tag?.id ?? '', 
+                      name: tag.tag?.name ?? '' 
+                    })) ?? []}
+                    onTagsChange={(tags) => handleFieldUpdate('tags', tags.map(tag => ({ tag_id: tag.id })))}
                   />
                 ) : (
                   <span className="text-sm text-gray-900 dark:text-white">

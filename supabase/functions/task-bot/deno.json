@@ -1,0 +1,33 @@
+{
+  "tasks": {
+    "serve": "deno run --allow-net --allow-env index.ts"
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.168.0/",
+    "@langchain/core": "npm:@langchain/core@0.1.48",
+    "@pinecone-database/pinecone": "npm:@pinecone-database/pinecone@1.1.2",
+    "langchain": "npm:langchain@^0.3.13",
+    "@langchain/openai": "npm:@langchain/openai@0.3.0"
+  },
+  "compilerOptions": {
+    "lib": [
+      "deno.window"
+    ],
+    "strict": true
+  },
+  "lint": {
+    "include": [
+      "**/*.ts"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  },
+  "fmt": {
+    "include": [
+      "**/*.ts"
+    ]
+  }
+}

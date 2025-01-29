@@ -33,9 +33,14 @@ export interface TicketMessage {
 }
 
 export interface Tag {
-  id: string;
-  name: string;
-  tag_id?: string;
+  id?: string;
+  name?: string;
+  color?: string;
+}
+
+export interface TicketTag {
+  tag_id: string;
+  tag: Tag;
 }
 
 export interface Ticket {
@@ -55,6 +60,7 @@ export interface Ticket {
   tags?: Tag[];
   messages?: TicketMessage[];
   events?: TicketEvent[];
+  ticket_tags?: TicketTag[];
 }
 
 export type TicketStatus = 'open' | 'pending' | 'closed';
