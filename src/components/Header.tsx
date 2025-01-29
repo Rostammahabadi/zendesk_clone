@@ -1,17 +1,21 @@
-import {  Bell, User, LogOut, Moon, Sun, Plus } from "lucide-react";
+import { Bell, User, LogOut, Moon, Sun, Plus, Bot, MoreVertical } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useDarkMode } from "../context/DarkModeContext";
 import { useAuth } from "../hooks/useAuth";
 import { CreateTicketFlow } from "./tickets/CreateTicketFlow";
+import { CustomerAssistant } from './homepage/CustomerAssistant';
 
 export function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const { userData } = useAuth();
   const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(false);
+  const isCustomer = userData?.role === 'customer';
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -29,15 +33,45 @@ export function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Create Ticket Button - Only show if not admin */}
+          {/* Actions Button - Only show if not admin */}
           {userData?.role !== 'admin' && (
-            <button
-              onClick={() => setShowCreateTicket(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors duration-200 shadow-sm hover:shadow-md"
-            >
-              <Plus className="h-4 w-4" />
-              Create Ticket
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsActionsOpen(!isActionsOpen)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors duration-200 shadow-sm hover:shadow-md"
+              >
+                <MoreVertical className="h-4 w-4" />
+                <span>Actions</span>
+              </button>
+              
+              {isActionsOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      setShowCreateTicket(true);
+                      setIsActionsOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Ticket
+                  </button>
+                  
+                  {isCustomer && (
+                    <button
+                      onClick={() => {
+                        setShowAssistant(true);
+                        setIsActionsOpen(false);
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Bot className="w-4 h-4 mr-2" />
+                      AI Assistant
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Dark Mode Toggle */}
@@ -56,6 +90,7 @@ export function Header() {
           <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
             <Bell className="w-5 h-5" />
           </button>
+          
           <div className="relative">
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -86,6 +121,13 @@ export function Header() {
           isOpen={showCreateTicket}
           onClose={() => setShowCreateTicket(false)}
         />
+        
+        {isCustomer && (
+          <CustomerAssistant
+            isOpen={showAssistant}
+            onClose={() => setShowAssistant(false)}
+          />
+        )}
       </div>
     </header>
   );

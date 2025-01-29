@@ -399,7 +399,7 @@ export function TicketDetail() {
                 <Flag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Priority:</span>
                 <select 
-                  value={ticket?.priority || 'medium'}
+                  value={ticket?.priority.toLowerCase() || 'medium'}
                   onChange={(e) => handleFieldUpdate('priority', e.target.value)}
                   disabled={!isAgent}
                   className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
@@ -415,7 +415,7 @@ export function TicketDetail() {
                 <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Topic:</span>
                 <select
-                  value={ticket?.topic || 'support'}
+                  value={ticket?.topic?.toLowerCase() || 'support'}
                   onChange={(e) => handleFieldUpdate('topic', e.target.value)}
                   disabled={!isAgent}
                   className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
@@ -434,7 +434,7 @@ export function TicketDetail() {
                 <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
                 <select
                   disabled={!isAgent}
-                  value={ticket?.status || 'open'}
+                  value={ticket?.status.toLowerCase() || 'open'}
                   onChange={(e) => handleFieldUpdate('status', e.target.value)}
                   className="text-sm border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-white disabled:opacity-75"
                 >

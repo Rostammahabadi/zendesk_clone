@@ -101,10 +101,10 @@ export function TicketList() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${ticket.priority === 'high' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 
-                      ticket.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' : 
+                    ${ticket.priority.toLowerCase() === 'high' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 
+                      ticket.priority.toLowerCase() === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' : 
                       'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'}`}>
-                    {ticket.priority}
+                    {ticket.priority.toLowerCase()}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

@@ -26,7 +26,8 @@ import { updateTicketTool } from "./updateTicketTool.ts";
 const llm = new ChatOpenAI({
   openAIApiKey: Deno.env.get("OPENAI_API_KEY")!,
   temperature: 0,
-  modelName: "gpt-4",
+  modelName: "gpt-3.5-turbo",
+  streaming: true,
 });
 
 // MemorySaver: stores conversation across multiple calls (by thread_id)
