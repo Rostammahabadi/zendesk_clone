@@ -124,12 +124,6 @@ export function RichTextEditor({
     focusEditor();
   };
 
-  const toggleBlockType = (e: React.MouseEvent, blockType: string) => {
-    e.preventDefault();
-    handleEditorChange(RichUtils.toggleBlockType(editorState, blockType));
-    focusEditor();
-  };
-
   const handleBoldClick = () => {
     handleEditorChange(RichUtils.toggleInlineStyle(editorState, 'BOLD'));
     focusEditor();
