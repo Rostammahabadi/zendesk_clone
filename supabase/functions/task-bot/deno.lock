@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "npm:@langchain/core@*": "0.3.33_zod@3.24.1",
     "npm:@langchain/core@0.1.48": "0.1.48_zod@3.24.1",
     "npm:@langchain/core@0.3.33": "0.3.33_zod@3.24.1",
     "npm:@langchain/langgraph@*": "0.1.1_@langchain+core@0.2.36__zod@3.24.1",
@@ -85,7 +86,7 @@
         "camelcase",
         "decamelize",
         "js-tiktoken",
-        "langsmith@0.3.3_openai@4.80.1__zod@3.24.1_zod@3.24.1",
+        "langsmith@0.3.3",
         "mustache",
         "p-queue",
         "p-retry",
@@ -417,6 +418,18 @@
         "uuid@10.0.0"
       ]
     },
+    "langsmith@0.3.3": {
+      "integrity": "sha512-B9B0ThaPYwNdTg9ck6bWF2Mjd1TJvVKLfLedufIudmO8aPDslcc2uVlyPEtskZFEdmfjfVHEqDnhnuAhyifrZQ==",
+      "dependencies": [
+        "@types/uuid",
+        "chalk",
+        "console-table-printer",
+        "p-queue",
+        "p-retry",
+        "semver",
+        "uuid@10.0.0"
+      ]
+    },
     "langsmith@0.3.3_openai@4.80.1__zod@3.24.1_zod@3.24.1": {
       "integrity": "sha512-B9B0ThaPYwNdTg9ck6bWF2Mjd1TJvVKLfLedufIudmO8aPDslcc2uVlyPEtskZFEdmfjfVHEqDnhnuAhyifrZQ==",
       "dependencies": [
@@ -667,6 +680,9 @@
     "https://deno.land/std@0.192.0/async/pool.ts": "f1b8d3df4d7fd3c73f8cbc91cc2e8b8e950910f1eab94230b443944d7584c657",
     "https://deno.land/std@0.192.0/async/retry.ts": "6521c061a5ab24e8b1ae624bdc581c4243d1d574f99dc7f5a2a195c2241fb1b8",
     "https://deno.land/std@0.192.0/async/tee.ts": "47e42d35f622650b02234d43803d0383a89eb4387e1b83b5a40106d18ae36757",
+    "https://deno.land/std@0.192.0/collections/filter_values.ts": "5b9feaf17b9a6e5ffccdd36cf6f38fa4ffa94cff2602d381c2ad0c2a97929652",
+    "https://deno.land/std@0.192.0/collections/without_all.ts": "a89f5da0b5830defed4f59666e188df411d8fece35a5f6ca69be6ca71a95c185",
+    "https://deno.land/std@0.192.0/dotenv/mod.ts": "f5a8123741d1561ae8184a7f043bc097b15132c5171c651142b804b6dbc21853",
     "https://deno.land/std@0.192.0/http/server.ts": "1b23463b5b36e4eebc495417f6af47a6f7d52e3294827a1226d2a1aab23d9d20",
     "https://deno.land/x/xhr@0.3.0/mod.ts": "094aacd627fd9635cd942053bf8032b5223b909858fa9dc8ffa583752ff63b20",
     "https://esm.sh/@pinecone-database/pinecone@4.1.0": "5e02122974f4824cfdc984121fbf62aced5151f637aba0c2b0de5dad3a5d46d7",

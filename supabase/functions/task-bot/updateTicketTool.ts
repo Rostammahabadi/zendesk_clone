@@ -2,13 +2,12 @@
 import { z } from "npm:zod";
 import { updateTicketZodSchema } from "./updateTicketSchema.ts";
 import { supabaseClient } from "./supabaseClient.ts";
-import { globalThis } from "npm:@langchain/core/globals";
 
 // For custom tools. (StructuredTool is from langchain/tools)
 import { StructuredTool } from "npm:langchain/tools";
 
 export class UpdateTicketTool extends StructuredTool {
-  name = "update_ticket";
+  name = "update_ticket_tool";
   description = `
     Use this tool to update an existing ticket in the CRM. You MUST have a valid ticketId 
     (the user is on the ticket detail page). If you do NOT have a ticketId, politely 
@@ -21,12 +20,15 @@ export class UpdateTicketTool extends StructuredTool {
   schema = updateTicketZodSchema;
 
   async _call(args: z.infer<typeof updateTicketZodSchema>) {
+    const ticketId = (globalThis as any).TICKET_ID ?? args.ticketId;
+    console.log("ticketId:", ticketId);
     // 1) If ticketId is missing or empty, return a prompt
-    if (!args.ticketId || !args.ticketId.trim()) {
+    if (!((globalThis as any).TICKET_ID ?? args.ticketId)) {
       return `I haven’t received a ticketID. 
 Please go to the ticket detail page by clicking 'Tickets' in the sidebar, 
 then selecting the ticket you'd like to update.`;
     }
+    
     
 
     // 2) Update in Supabase
@@ -47,7 +49,7 @@ please specify subject, description, status, priority, type, or topic.`;
     const { error } = await supabaseClient
       .from("tickets")
       .update(ticketUpdateData)
-      .eq("id", args.ticketId);
+      .eq("id", (globalThis as any).TICKET_ID);
 
     if (error) {
       console.error("Error updating ticket:", error);

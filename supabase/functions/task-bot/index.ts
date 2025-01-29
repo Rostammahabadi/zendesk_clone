@@ -14,7 +14,7 @@ import { MemorySaver } from "npm:@langchain/langgraph";
 import { createReactAgent } from "npm:@langchain/langgraph@0.2.41/prebuilt";
 
 // HumanMessage: wraps user text
-import { HumanMessage } from "npm:@langchain/core/messages";
+import { HumanMessage, SystemMessage } from "npm:@langchain/core/messages";
 
 // For custom tools. (StructuredTool is from langchain/tools)
 import { createTicketTool } from "./createTicketTool.ts";
@@ -47,11 +47,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, thread_id, current_user, company_id } = await req.json();
-    console.log("messages:", messages);
-    console.log("thread_id:", thread_id);
-    console.log("current_user:", current_user);
-    console.log("company_id:", company_id);
+    const { messages, thread_id, current_user, company_id, ticket_id } = await req.json();
     if (!current_user) {
       throw new Error("current_user is required");
     }
@@ -59,21 +55,43 @@ serve(async (req: Request) => {
     (globalThis as any).ORIGINAL_THREAD_ID = thread_id;
     (globalThis as any).CURRENT_USER = current_user;
     (globalThis as any).CURRENT_COMPANY_ID = company_id;
+    (globalThis as any).TICKET_ID = ticket_id;
     // Convert user strings to HumanMessage
     const humanMessages = messages.map(
       (m: string) => new HumanMessage(m),
     );
 
+    let systemText = `
+      You are an AI assistant for ticket management only. 
+      You can create or update tickets, and nothing else. 
+      If the user asks for anything unrelated, politely refuse or direct them to an admin.
+    `;
+    if (ticket_id) {
+      systemText += `
+        The user has already provided a ticket_id: ${ticket_id}.
+        Therefore, you can proceed with an update if they request it.
+      `;
+    } else {
+      systemText += `
+        The user has NOT provided a ticket_id.
+        If they want to update a ticket, remind them to navigate to 
+        the ticket detail page or provide the ticket ID.
+      `;
+    }
+
+    const totalMessages = [systemText, ...humanMessages];
+
     // Invoke the agent with current_user in both places it might be needed
     const agentState = await agent.invoke(
       { 
-        messages: humanMessages,
+        messages: totalMessages,
       },
       { 
         configurable: { 
           thread_id: thread_id || "defaultThread",
           current_user: current_user,
-          company_id: company_id
+          company_id: company_id,
+          ticket_id: ticket_id
         }
       }
     );

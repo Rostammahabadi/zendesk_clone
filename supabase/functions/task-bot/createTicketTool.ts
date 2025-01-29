@@ -1,12 +1,11 @@
 // For custom tools. (StructuredTool is from langchain/tools)
 import { StructuredTool } from "npm:langchain/tools";
 import { z } from "npm:zod";
-import { globalThis } from "npm:@langchain/core/globals";
 import { createTicketZodSchema } from "./createTicketSchema.ts";
 import { supabaseClient } from "./supabaseClient.ts";
 
 export class CreateTicketTool extends StructuredTool {
-  name = "create_ticket ";
+  name = "create_ticket_tool";
   description = `
     Use this tool to create a ticket. Must use these fields:
     - subject (string)
