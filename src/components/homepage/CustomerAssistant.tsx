@@ -102,28 +102,28 @@ export function CustomerAssistant() {
 
     try {
       // Here we'll call the task-bot endpoint instead of queryMedicare
-      const response = await fetch('http://127.0.0.1:8000/functions/v1/task-bot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          messages: [question],
-          thread_id: Date.now().toString(),
-          current_user: userData?.id,
-          company_id: userData?.company_id
-        })
-      });
-      // const response = await fetch('https://ltjtbwxymwaslefbrheu.supabase.co/functions/v1/task-bot', {
+      // const response = await fetch('http://127.0.0.1:8000/functions/v1/task-bot', {
       //   method: 'POST',
       //   headers: {
       //     'Content-Type': 'application/json',
       //   },
       //   body: JSON.stringify({ 
       //     messages: [question],
-      //     thread_id: Date.now().toString() 
+      //     thread_id: Date.now().toString(),
+      //     current_user: userData?.id,
+      //     company_id: userData?.company_id
       //   })
       // });
+      const response = await fetch('https://ltjtbwxymwaslefbrheu.supabase.co/functions/v1/task-bot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          messages: [question],
+          thread_id: Date.now().toString() 
+        })
+      });
       
       if (!response.ok) {
         throw new Error('Failed to get response from assistant');
