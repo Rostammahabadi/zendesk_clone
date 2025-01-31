@@ -25,7 +25,7 @@ Relevant LangChain documentation:
 """  # noqa: E501
 from typing import Any, List, Union, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import (
     format_to_openai_tool_messages,
@@ -42,6 +42,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from langsmith import traceable
 from supabase import create_client, Client
 import os
+from langchain_community.embeddings import OpenAIEmbeddings
+
+
+from pinecone import Pinecone
+# from langchain.vectorstores import Pinecone as PineconeVectorStore
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 from langserve import add_routes
 # Initialize Supabase client
@@ -49,6 +55,25 @@ supabase: Client = create_client(
     os.environ.get("SUPABASE_URL", ""),
     os.environ.get("SUPABASE_KEY", "")
 )
+
+pc = Pinecone(
+  api_key=os.environ.get("PINECONE_API_KEY")
+)
+
+# Initialize embeddings
+embeddings = OpenAIEmbeddings()
+
+# Initialize Pinecone vector store
+lcd_index = pc.Index("medicare-info")
+
+MEDICARE_SYSTEM_PROMPT = """
+You are a helpful Medicare coverage assistant. Your audience is everyday people,
+not medical professionals. They want a simple overview of whether or not something
+is covered, or how coverage restrictions work. They do NOT need specific codes or
+documentation requirements.
+
+[... rest of your system prompt ...]
+"""
 
 @tool
 @traceable
@@ -159,9 +184,9 @@ def create_ticket(
 @tool
 @traceable
 def send_message(
-    ticket_id: str,
-    body: str,
-    user_id: Optional[str] = None,
+    ticket_id: str = None,
+    body: str = None,
+    user_id: str = None,
 ) -> Dict:
     """Sends a message in a ticket thread.
     Args:
@@ -169,6 +194,9 @@ def send_message(
         body: The message content (required)
         user_id: User UUID of message sender (will use current user if not provided)
     """
+    print("ticket_id:", ticket_id)
+    print("body:", body)
+    print("user_id:", user_id)
     if not ticket_id or not body:
         raise ValueError("ticket_id and body are required")
 
@@ -226,12 +254,18 @@ prompt = ChatPromptTemplate.from_messages(
               - created_by is set to {user_id}
               - (Optionally) pass metadata={metadata} if relevant
 
-            You can also send messages within tickets by calling the send_message function.
-            Whenever you call send_message, please ensure:
-              - ticket_id is set to {ticket_id}
-              - company_id is set to {company_id}
-              - created_by is set to {user_id}
-              - (Optionally) pass metadata={metadata} if relevant
+             Whenever the user says something like "Send a message in this ticket and say X",
+            you must call the send_message function **with arguments**:
+              - ticket_id={ticket_id}
+              - user_id={user_id}
+              - body=X
+
+            Example:
+              send_message(
+                  ticket_id="{ticket_id}",
+                  body="This is awesome",
+                  user_id="{user_id}"
+              )
             """
         ),
         MessagesPlaceholder(variable_name="chat_history"),
@@ -250,7 +284,7 @@ agent = (
         "user_id": lambda x: x.get("user_id"),
         "company_id": lambda x: x.get("company_id"),
         "metadata": lambda x: x.get("metadata", {}),
-        "ticket_id": lambda x: x.get("ticket_id", None),
+        "ticket_id": lambda x: x.get("ticket_id"),
     }
     | prompt
     # | prompt_trimmer # See comment above.
@@ -290,6 +324,7 @@ class Input(BaseModel):
     user_id: Optional[str] = None
     company_id: Optional[str] = None
     metadata: Optional[Dict] = None
+    ticket_id: Optional[str] = None
 
 
 class Output(BaseModel):
@@ -307,6 +342,63 @@ add_routes(
         {"run_name": "agent"}
     ),
 )
+
+class MedicareInput(BaseModel):
+    question: str
+
+class MedicareOutput(BaseModel):
+    answer: str
+
+def build_context(lcd_chunks: List[str]) -> str:
+    return "\n\n".join(f"LCD CHUNK {i+1}:\n{chunk}" 
+                      for i, chunk in enumerate(lcd_chunks))
+
+from langchain_core.output_parsers import StrOutputParser
+
+@app.post("/query-medicare")
+async def medicare_query(input_data: MedicareInput):
+    try:
+        # First get the embedding for the question
+        query_embedding = embeddings.embed_query(input_data.question)
+        
+        # Get relevant documents from Pinecone using keyword arguments
+        docs = lcd_index.query(
+            vector=query_embedding,
+            top_k=3,
+            filter={"status": "A"},
+            include_metadata=True
+        )
+        
+        # Build context from documents
+        lcd_chunks = [match.metadata.get("chunk_text", "") for match in docs.matches]
+        context = build_context(lcd_chunks)
+        
+        # Create the chat prompt
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", MEDICARE_SYSTEM_PROMPT),
+            ("human", """
+            CONTEXT:
+            {context}
+            
+            QUESTION:
+            {question}
+            """)
+        ])
+        
+        # Create the chain with StrOutputParser instead of OpenAIToolsAgentOutputParser
+        chain = prompt | ChatOpenAI(temperature=0.2) | StrOutputParser()
+        
+        # Get response
+        response = chain.invoke({
+            "context": context,
+            "question": input_data.question
+        })
+        
+        return MedicareOutput(answer=response)  # response is already a string
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
