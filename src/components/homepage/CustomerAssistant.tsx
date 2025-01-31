@@ -1,19 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, User, Send, X } from 'lucide-react';
+import { Bot, User, Send, X, Mic, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 
 interface Message {
   text: string;
   isUser: boolean;
   timestamp: number;
 }
-
-const STORAGE_KEY = 'customer_assistant_messages';
-
-const clearChatHistory = () => {
-  localStorage.removeItem(STORAGE_KEY);
-};
 
 interface CustomerAssistantProps {
   isOpen: boolean;
@@ -22,277 +17,338 @@ interface CustomerAssistantProps {
 
 export function CustomerAssistant({ isOpen, onClose }: CustomerAssistantProps) {
   const { userData } = useAuth();
-  const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    }
-    return [];
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const location = useLocation();
+
+  const [typing, setTyping] = useState(false);       // Are we currently typing a chunk?
+  const [chunkQueue, setChunkQueue] = useState<string[]>([]); // Stores incoming chunks
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const defaultMessage = 'Hi! 👋 I\'m your personal assistant. How can I help you today?';
+  const defaultMessage = "Hi! 👋 I'm your personal assistant. How can I help you today?";
 
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  // Speech recognition setup
+  const startListening = () => {
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new (window as any).webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const text = event.results[0][0].transcript;
+        const ticketId = getTicketId();
+        console.log('Speech recognition result:', text);
+        console.log('Current ticket ID:', ticketId);
+        setQuestion(text);
+        sendMessage(text);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } else {
+      alert('Speech recognition is not supported in your browser.');
     }
-  }, [messages]);
+  };
 
+  // Text to speech
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      setIsSpeaking(true);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => setIsSpeaking(false);
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // On mount, add your default message if you like
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([{ 
-        text: defaultMessage, 
-        isUser: false, 
-        timestamp: Date.now() 
-      }]);
+      const defaultMsg = {
+        text: defaultMessage,
+        isUser: false,
+        timestamp: Date.now()
+      };
+      setMessages([defaultMsg]);
     }
   }, [isOpen, messages.length]);
 
-  // Add event listener for window unload
+  // Scroll to bottom
   useEffect(() => {
-    const handleUnload = () => {
-      clearChatHistory();
-    };
-
-    window.addEventListener('unload', handleUnload);
-    return () => {
-      window.removeEventListener('unload', handleUnload);
-    };
-  }, []);
-
-  // Listen for user logout
-  useEffect(() => {
-    const handleLogout = () => {
-      clearChatHistory();
-    };
-
-    window.addEventListener('logout', handleLogout);
-    return () => {
-      window.removeEventListener('logout', handleLogout);
-    };
-  }, []);
-
-  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
   }, [messages]);
 
-  // Add smooth scrolling when chat is opened
+  // Clean up speech synthesis on unmount
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(scrollToBottom, 100);
-    }
-  }, [isOpen]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!question.trim() || isLoading) return;
-    
-    const userMessage: Message = {
-      text: question,
-      isUser: true,
-      timestamp: Date.now()
+    return () => {
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+      }
     };
+  }, []);
+
+  // Extract ticket ID from URL if we're on a ticket detail page
+  const getTicketId = () => {
+    const match = location.pathname.match(/\/tickets\/([^\/]+)/);
+    return match ? match[1] : null;
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
     
+    // Add user message
+    const userMessage: Message = { text, isUser: true, timestamp: Date.now() };
     setMessages(prev => [...prev, userMessage]);
     setQuestion('');
     setIsLoading(true);
 
-    try {
-      // Here we'll call the task-bot endpoint instead of queryMedicare
-      const isOnTicketDetail = window.location.pathname.includes('/tickets/');
-      const ticketId = isOnTicketDetail ? window.location.pathname.split('/').pop() : null;
+    // Add a placeholder AI message for the answer
+    const aiMessageId = Date.now() + 1;
+    setMessages(prev => [...prev, { text: '', isUser: false, timestamp: aiMessageId }]);
 
-      const response = await fetch('http://127.0.0.1:8000/functions/v1/task-bot', {
+    try {
+      // Transform old messages for server
+      const chat_history = messages.map(m => {
+        return m.isUser
+          ? { type: 'human', content: m.text }
+          : { type: 'ai', content: m.text };
+      });
+
+      const ticketId = getTicketId();
+
+      // SSE call
+      const response = await fetch(`${import.meta.env.VITE_LANGSERVER_URL}/stream_events`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          messages: [question],
-          thread_id: Date.now().toString(),
-          current_user: userData?.id,
-          company_id: userData?.company_id,
-          ticket_id: ticketId
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: {
+            input: text,
+            chat_history,
+            user_id: userData?.id,
+            company_id: userData?.company_id,
+            metadata: {
+              user_email: userData?.email,
+              user_role: userData?.role,
+              ...(ticketId && { ticket_id: ticketId })
+            },
+            ticket_id: ticketId,
+          }
         })
       });
-      // const response = await fetch('https://ltjtbwxymwaslefbrheu.supabase.co/functions/v1/task-bot', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ 
-      //     messages: [question],
-      //     thread_id: Date.now().toString(),
-      //     current_user: userData?.id,
-      //     company_id: userData?.company_id
-      //   })
-      // });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get response from assistant');
+
+      if (!response.ok || !response.body) {
+        throw new Error('SSE stream error');
       }
 
-      const data = await response.json();
-      
-      if (data && data.response) {
-        const aiMessage: Message = {
-          text: data.response,
-          isUser: false,
-          timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-      } else {
-        throw new Error('Invalid response format');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            try {
+              const data = JSON.parse(line.slice(5));
+              if (data.event === 'on_chat_model_stream' && data.data?.chunk?.content) {
+                // Update the last message with the new chunk
+                setMessages(prev => prev.map((msg, idx) => {
+                  if (idx === prev.length - 1 && !msg.isUser) {
+                    return { ...msg, text: msg.text + data.data.chunk.content };
+                  }
+                  return msg;
+                }));
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+          }
+        }
       }
     } catch (error) {
-      const errorMessage: Message = {
-        text: "I apologize, but I'm having trouble processing your request right now. Please try again later.",
-        isUser: false,
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error('Error:', error);
+      setMessages(prev => prev.map((msg, idx) => {
+        if (idx === prev.length - 1 && !msg.isUser) {
+          return { ...msg, text: 'Sorry, there was an error processing your request.' };
+        }
+        return msg;
+      }));
     } finally {
       setIsLoading(false);
+      setQuestion('');
     }
   };
 
-  // async function callBotWithStreaming(payload: any) {
-  //   const response = await fetch("http://127.0.0.1:8000/functions/v1/task-bot", {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify(payload),
-  //   });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(question);
+  };
 
-  //   if (!response.body) {
-  //     throw new Error("No response body from SSE endpoint.");
-  //   }
+  /********************************************************************
+   * 2) A useEffect that picks chunks off chunkQueue one at a time
+   ********************************************************************/
+  useEffect(() => {
+    // If we're not already typing, and there's something in the queue, start typing it
+    if (!typing && chunkQueue.length > 0) {
+      const nextChunk = chunkQueue[0];
+      // Remove it from the queue
+      setChunkQueue(prev => prev.slice(1));
+      // Start typing
+      setTyping(true);
+      animateChunk(nextChunk, () => {
+        setTyping(false);
+      });
+    }
+  }, [typing, chunkQueue]);
 
-  //   const reader = response.body.getReader();
-  //   const decoder = new TextDecoder();
+  /********************************************************************
+   * 3) animateChunk: type out the chunk letter-by-letter
+   *    Then call onDone() when finished.
+   ********************************************************************/
+  function animateChunk(chunkText: string, onDone: () => void) {
+    let i = 0;
+    const intervalId = setInterval(() => {
+      if (i >= chunkText.length) {
+        clearInterval(intervalId);
+        onDone();
+        return;
+      }
+      const nextChar = chunkText[i++];
+      // Append this character to the last AI message
+      setMessages(prev => {
+        return prev.map((msg, idx) => {
+          // The last message in the array is the AI placeholder 
+          // (or you can find it by "isUser=false and highest timestamp")
+          if (idx === prev.length - 1 && !msg.isUser) {
+            return { ...msg, text: msg.text + nextChar };
+          }
+          return msg;
+        });
+      });
+    }, 50);
+  }
 
-  //   let partialChunk = "";
-
-  //   while (true) {
-  //     const { done, value } = await reader.read();
-  //     if (done) {
-  //       // The stream has ended
-  //       break;
-  //     }
-  //     // Decode the chunk
-  //     const chunk = decoder.decode(value, { stream: true });
-  //     partialChunk += chunk;
-
-  //     // SSE splits events by double-newline
-  //     const lines = partialChunk.split("\n\n");
-  //     // The last line might be incomplete, keep it for next iteration
-  //     partialChunk = lines.pop() || "";
-
-  //     // Each 'line' is an SSE event, typically in the format "data: [TEXT]"
-  //     for (const line of lines) {
-  //       const sseEvent = line.trim(); // e.g. "data: Hello"
-  //       if (!sseEvent.startsWith("data: ")) continue;
-  //       const text = sseEvent.slice("data: ".length); // e.g. "Hello"
-
-  //       // Now do something with the text chunk
-  //       console.log("Token/Chunk:", text);
-
-  //       // E.g. set state in your React chat UI to show partial text
-  //       // setAssistantAnswer(prev => prev + text);
-  //     }
-  //   }
-  // }
-
+  /********************************************************************
+   * Your UI
+   ********************************************************************/
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="fixed top-20 right-4 z-50 mb-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden w-[400px]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-4 right-4 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col"
+          style={{ height: '500px' }}
         >
-          <div className="bg-blue-600 dark:bg-blue-700 p-4 text-white flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bot className="h-6 w-6" />
-              <span className="font-semibold">Customer Assistant</span>
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <Bot className="h-5 w-5 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Assistant</h3>
             </div>
-            <button 
-              onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors"
-            >
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="h-[400px] flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900">
-              {messages.map((message) => (
-                <div
-                  key={message.timestamp}
-                  className={`flex items-start space-x-2 mb-4 ${
-                    message.isUser ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}
-                >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                    message.isUser 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-200 dark:bg-gray-700'
-                  }`}>
-                    {message.isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.timestamp}
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex items-start space-x-2 max-w-[80%] ${message.isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'}`}>
+                  <div className={`flex-shrink-0 rounded-full p-2 ${message.isUser ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                    {message.isUser ? (
+                      <User className="h-4 w-4 text-white" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                    )}
                   </div>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                    message.isUser
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-                  }`}>
-                    <p className="text-sm">{message.text}</p>
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start space-x-2 mb-4">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
-                    <Bot className="h-5 w-5" />
-                  </div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-2xl px-4 py-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
+                  <div
+                    className={`rounded-lg px-4 py-2 ${
+                      message.isUser
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                    {!message.isUser && (
+                      <button
+                        onClick={() => isSpeaking ? stopSpeaking() : speak(message.text)}
+                        className="mt-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      >
+                        {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
-              <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Ask me anything..."
-                  className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                  disabled={isLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
-              </form>
-            </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
           </div>
+
+          {/* Input */}
+          <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={startListening}
+                className={`p-2 rounded-lg ${
+                  isListening
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                } hover:bg-gray-200 dark:hover:bg-gray-600`}
+                disabled={isLoading}
+              >
+                <Mic className="h-5 w-5" />
+              </button>
+              <button
+                type="submit"
+                className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!question.trim() || isLoading}
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
+          </form>
         </motion.div>
       )}
     </AnimatePresence>
   );
-} 
+}

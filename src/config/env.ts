@@ -4,6 +4,7 @@ interface EnvConfig {
   googleClientId: string
   environment: 'development' | 'production' | 'test'
   sentryDsn: string
+  langserverUrl: string
 }
 
 const getEnvironmentVariable = (key: string): string => {
@@ -20,4 +21,5 @@ export const env: EnvConfig = {
   googleClientId: getEnvironmentVariable('VITE_GOOGLE_CLIENT_ID'),
   environment: (import.meta.env.MODE || 'development') as EnvConfig['environment'],
   sentryDsn: getEnvironmentVariable('VITE_SENTRY_DSN'),
+  langserverUrl: getEnvironmentVariable('VITE_LANGSERVER_URL'),
 } 

@@ -26,6 +26,7 @@ export function TicketList() {
   const navigate = useNavigate();
   const { role } = useParams();
   const { data: tickets = [], isLoading } = useTickets();
+  const [localSortedTickets, setLocalSortedTickets] = useState<typeof tickets>([]);
 
   const handleTicketClick = (ticketId: string) => {
     navigate(`/${role}/dashboard/tickets/${ticketId}`);
@@ -38,6 +39,24 @@ export function TicketList() {
   const handleSort = (field: string, direction: 'asc' | 'desc') => {
     setSortConfig({ field, direction });
     setActiveHeader(null);
+    
+    // Force re-sort of tickets
+    const newSortedTickets = [...(tickets || [])].sort((a, b) => {
+      if (field === 'created_at') {
+        const aDate = new Date(a.created_at).getTime();
+        const bDate = new Date(b.created_at).getTime();
+        return direction === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+      
+      const aValue = String(a[field as keyof typeof a] || '');
+      const bValue = String(b[field as keyof typeof b] || '');
+      
+      return direction === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+
+    setLocalSortedTickets(newSortedTickets);
   };
 
   const handleFilter = (field: string, value: string) => {
@@ -75,7 +94,7 @@ export function TicketList() {
     return Math.floor(seconds) + 's ago';
   };
 
-  const sortedAndFilteredTickets = [...tickets]
+  const sortedAndFilteredTickets = (localSortedTickets.length > 0 ? localSortedTickets : tickets)
     .filter(ticket => {
       // First apply search filter
       if (searchQuery) {
@@ -98,6 +117,11 @@ export function TicketList() {
           const customerName = ticket.created_by?.full_name || 'Unknown';
           return config.values.includes(customerName);
         }
+
+        if (field === 'created_at') {
+          const ticketDate = new Date(ticket.created_at).toISOString().split('T')[0];
+          return config.values.some(dateStr => dateStr === ticketDate);
+        }
         
         const value = ticket[field as keyof typeof ticket];
         return config.values.includes(String(value));
@@ -105,6 +129,14 @@ export function TicketList() {
     })
     .sort((a, b) => {
       if (!sortConfig.field || !sortConfig.direction) return 0;
+
+      // Special handling for created_at field
+      if (sortConfig.field === 'created_at') {
+        const aDate = new Date(a.created_at).getTime();
+        const bDate = new Date(b.created_at).getTime();
+        return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+
       const aValue = a[sortConfig.field as keyof typeof a] ?? '';
       const bValue = b[sortConfig.field as keyof typeof b] ?? '';
       
@@ -119,12 +151,18 @@ export function TicketList() {
   ).sort((a, b) => {
     // Sort by priority first (high > medium > low)
     const priorityOrder = { high: 0, medium: 1, low: 2 };
-    const priorityDiff = (priorityOrder[a.priority as keyof typeof priorityOrder] || 0) - 
-                        (priorityOrder[b.priority as keyof typeof priorityOrder] || 0);
+    // Normalize priorities to lowercase for comparison
+    const aPriority = a.priority.toLowerCase();
+    const bPriority = b.priority.toLowerCase();
+    const priorityDiff = (priorityOrder[aPriority as keyof typeof priorityOrder] || 0) - 
+                        (priorityOrder[bPriority as keyof typeof priorityOrder] || 0);
+    
     if (priorityDiff !== 0) return priorityDiff;
 
     // If same priority, sort by created date (newest first)
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const aDate = new Date(a.created_at).getTime();
+    const bDate = new Date(b.created_at).getTime();
+    return bDate - aDate;  // Newest first
   });
 
   const closedTickets = sortedAndFilteredTickets.filter(
@@ -138,11 +176,56 @@ export function TicketList() {
       if (field === 'created_by') {
         return ticket.created_by?.full_name || 'Unknown';
       }
+      if (field === 'created_at') {
+        return ticket.created_at;
+      }
       return String(ticket[field as keyof typeof ticket]);
-    }))) : [];
+    }))).sort((a, b) => {
+      if (field === 'created_at') {
+        return new Date(b).getTime() - new Date(a).getTime();
+      }
+      return a.localeCompare(b);
+    }) : [];
+
     const isActive = activeHeader === field;
     const currentSort = sortConfig.field === field ? sortConfig.direction : null;
     const currentFilters = filterConfig[field]?.values || [];
+
+    // Group dates by day
+    const groupDatesByDay = (dates: string[]) => {
+      const groups: { [key: string]: string } = {};
+      dates.forEach(date => {
+        const dateObj = new Date(date);
+        const dayKey = dateObj.toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        // Store just the date part (YYYY-MM-DD) as the value
+        const dateValue = dateObj.toISOString().split('T')[0];
+        groups[dayKey] = dateValue;
+      });
+      
+      // Sort the days in reverse chronological order
+      return Object.fromEntries(
+        Object.entries(groups)
+          .sort(([, a], [, b]) => new Date(b).getTime() - new Date(a).getTime())
+      );
+    };
+
+    // Format the display value for the filter options
+    const getDisplayValue = (value: string) => {
+      if (field === 'created_at') {
+        return new Date(value).toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+      return value;
+    };
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -160,6 +243,24 @@ export function TicketList() {
       };
     }, [isActive]);
 
+    const dateGroups = field === 'created_at' ? groupDatesByDay(uniqueValues as string[]) : null;
+
+    // Update the filter handler for dates
+    const handleDateFilter = (dateStr: string) => {
+      const endOfDay = new Date(dateStr);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      setFilterConfig(prev => ({
+        ...prev,
+        [field]: {
+          isOpen: true,
+          values: prev[field]?.values.includes(dateStr)
+            ? prev[field].values.filter(v => v !== dateStr)
+            : [...(prev[field]?.values || []), dateStr]
+        }
+      }));
+    };
+
     return (
       <th className="px-6 py-3 text-left">
         <div className="relative" ref={dropdownRef}>
@@ -175,9 +276,15 @@ export function TicketList() {
           </button>
           
           {isActive && (
-            <div className="absolute z-10 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+            <div className="fixed z-50 mt-2 w-72 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5" 
+                 style={{ 
+                   right: field === 'created_at' ? '1rem' : 'auto',
+                   maxHeight: 'calc(100vh - 200px)',
+                   overflowY: 'auto',
+                   top: 'auto'
+                 }}>
               <div className="py-1">
-                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase sticky top-0 bg-white dark:bg-gray-800 z-10">
                   Sort
                 </div>
                 <button
@@ -190,7 +297,7 @@ export function TicketList() {
                   } hover:bg-gray-100 dark:hover:bg-gray-700`}
                 >
                   <ChevronUp className="mr-2 h-4 w-4" />
-                  Ascending
+                  {field === 'created_at' ? 'Oldest First' : 'Ascending'}
                 </button>
                 <button
                   onClick={(e) => {
@@ -202,36 +309,59 @@ export function TicketList() {
                   } hover:bg-gray-100 dark:hover:bg-gray-700`}
                 >
                   <ChevronDown className="mr-2 h-4 w-4" />
-                  Descending
+                  {field === 'created_at' ? 'Newest First' : 'Descending'}
                 </button>
                 
                 {isFilterable && uniqueValues.length > 0 && (
                   <>
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                      Filter
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase sticky top-[41px] bg-white dark:bg-gray-800 z-10">
+                      Filter by Date
                     </div>
-                    <div className="max-h-48 overflow-y-auto">
-                      {uniqueValues.map((value) => (
-                        <button
-                          key={value}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFilter(field, value);
-                          }}
-                          className={`flex items-center w-full px-4 py-2 text-sm ${
-                            currentFilters.includes(value) ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50' : 'text-gray-700 dark:text-gray-200'
-                          } hover:bg-gray-100 dark:hover:bg-gray-700`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={currentFilters.includes(value)}
-                            onChange={() => {}}
-                            className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 rounded border-gray-300 dark:border-gray-600"
-                          />
-                          {value}
-                        </button>
-                      ))}
+                    <div className="overflow-hidden">
+                      {field === 'created_at' && dateGroups ? (
+                        Object.entries(dateGroups).map(([displayDate, dateValue]) => (
+                          <button
+                            key={dateValue}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDateFilter(dateValue);
+                            }}
+                            className={`flex items-center w-full px-4 py-2 text-sm ${
+                              currentFilters.includes(dateValue) ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50' : 'text-gray-700 dark:text-gray-200'
+                            } hover:bg-gray-100 dark:hover:bg-gray-700`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={currentFilters.includes(dateValue)}
+                              onChange={() => {}}
+                              className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 rounded border-gray-300 dark:border-gray-600"
+                            />
+                            {displayDate}
+                          </button>
+                        ))
+                      ) : (
+                        uniqueValues.map((value) => (
+                          <button
+                            key={value}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFilter(field, value);
+                            }}
+                            className={`flex items-center w-full px-4 py-2 text-sm ${
+                              currentFilters.includes(value) ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50' : 'text-gray-700 dark:text-gray-200'
+                            } hover:bg-gray-100 dark:hover:bg-gray-700`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={currentFilters.includes(value)}
+                              onChange={() => {}}
+                              className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 rounded border-gray-300 dark:border-gray-600"
+                            />
+                            {getDisplayValue(value)}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </>
                 )}

@@ -4,7 +4,7 @@ import { useTickets } from "../hooks/queries/useTickets";
 export function TicketList() {
   const { role } = useParams();
   const navigate = useNavigate();
-  const { data: tickets = [], isLoading } = useTickets();
+  const { data: tickets = [], isLoading, error } = useTickets();
 
   const getTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -32,6 +32,15 @@ export function TicketList() {
   const handleTicketClick = (ticketId: string) => {
     navigate(`/${role}/dashboard/tickets/${ticketId}`);
   };
+
+  if (error) {
+    console.error('Error loading tickets:', error);
+    return (
+      <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <p className="text-red-500 dark:text-red-400">Error loading tickets: {error.message}</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -102,9 +111,9 @@ export function TicketList() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                     ${ticket.priority.toLowerCase() === 'high' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 
-                      ticket.priority.toLowerCase() === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' : 
+                      ['medium', 'Medium'].includes(ticket.priority) ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' : 
                       'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'}`}>
-                    {ticket.priority.toLowerCase()}
+                    {ticket.priority}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

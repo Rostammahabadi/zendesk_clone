@@ -10,7 +10,9 @@ export const useTickets = () => {
   return useQuery({
     queryKey: ['tickets', userData?.company_id, userData?.role],
     queryFn: async () => {
+
       if (!userData?.company_id) {
+        console.log('No company ID found');
         return [];
       }
 
@@ -61,10 +63,11 @@ export const useTickets = () => {
       }
 
       if (!data) {
+        console.log('No tickets found');
         return [];
       }
 
-      return data.map(ticket => ({
+      const formattedTickets = data.map(ticket => ({
         id: ticket.id,
         subject: ticket.subject,
         description: ticket.description,
@@ -78,6 +81,8 @@ export const useTickets = () => {
         topic: null,
         type: null
       })) as Ticket[];
+
+      return formattedTickets;
     },
     enabled: !!userData?.company_id,
     staleTime: 30000, // Cache data for 30 seconds
