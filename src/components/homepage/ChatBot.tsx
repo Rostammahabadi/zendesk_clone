@@ -79,7 +79,7 @@ const useSpeechToText = () => {
 };
 
 async function queryMedicare(question: string) {
-  const url = 'https://ltjtbwxymwaslefbrheu.supabase.co/functions/v1/query-medicare';
+  const url = `${import.meta.env.VITE_LANGSERVER_URL}/query-medicare`;
   try {
     const response = await fetch(url, {
       method: 'POST',
